@@ -139,7 +139,7 @@ as $$
 declare
   deleted_count integer;
 begin
-  delete from public.attendees;
+  delete from public.attendees where true;
   get diagnostics deleted_count = row_count;
   return deleted_count;
 end;
@@ -205,7 +205,7 @@ as $$
 declare
   inserted_count integer;
 begin
-  delete from public.invitees;
+  delete from public.invitees where true;
 
   insert into public.invitees (employee_id, fullname, gender, position, department, bu)
   select
@@ -246,7 +246,7 @@ as $$
 declare
   deleted_count integer;
 begin
-  delete from public.invitees;
+  delete from public.invitees where true;
   get diagnostics deleted_count = row_count;
   return deleted_count;
 end;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invitees Uploader (CSV & Excel → Supabase)</title>
+    <title>Invitees - Event Portal</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
 
@@ -37,73 +37,82 @@
 
         <div class="top-row">
             <div class="title-block">
-                <h1>Invitees Uploader</h1>
-                <p class="subtitle">Preview, then append or overwrite the <span class="mono">invitees</span> table in Supabase.</p>
+                <h1>Invitees</h1>
+                <p class="subtitle">Everyone currently in the <span class="mono">invitees</span> table.</p>
             </div>
             <div class="d-flex gap-2">
-                <button id="viewListBtn" class="btn-ghost btn btn-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    View invitee list
+                <button id="refreshListBtn" class="btn btn-ghost btn-sm btn-icon" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                    Refresh
+                </button>
+                <button id="downloadXlsxBtn" class="btn btn-amber btn-sm btn-icon" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                    Export Excel
+                </button>
+                <button id="toggleUploadBtn" class="btn btn-brand btn-sm btn-icon" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    Upload invitees
                 </button>
             </div>
         </div>
 
-        <div id="dropzone" class="dropzone">
-            <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none;">
-            <label for="fileInput">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                </svg>
-                <span>
-                    <span class="primary">Click to upload or drag and drop</span><br>
-                    <span class="secondary">CSV, XLSX, or XLS files</span>
-                </span>
-            </label>
-        </div>
-
         <div id="errorContainer" class="panel panel-error hidden"></div>
         <div id="statusContainer" class="panel panel-status hidden"></div>
-        <div id="summaryContainer" class="stat-strip hidden"></div>
 
-        <div id="tableContainer" class="surface-card table-card hidden">
-            <div class="table-toolbar">
-                <span id="fileMeta" class="file-meta"></span>
-                <div class="btn-group-actions">
-                    <button id="appendBtn" class="btn-emerald btn btn-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                        Append new records
-                    </button>
-                    <button id="overwriteBtn" class="btn-amber btn btn-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
-                        Overwrite entire table
-                    </button>
-                    <button id="clearBtn" class="btn-ghost btn">Discard preview</button>
-                </div>
-            </div>
-            <div class="table-scroll">
-                <table id="csvTable" class="data-table">
-                    <thead id="tableHeader"></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="viewListContainer" class="surface-card table-card hidden">
+        <!-- Primary view: the current invitee list, loaded immediately on page open -->
+        <div id="viewListContainer" class="surface-card table-card">
             <div class="table-toolbar">
                 <span id="viewListMeta" class="file-meta"></span>
-                <div class="btn-group-actions">
-                    <button id="downloadXlsxBtn" class="btn btn-brand btn-sm btn-icon" type="button">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-                        Download Excel
-                    </button>
-                    <button id="closeViewListBtn" class="btn-ghost btn">Close</button>
-                </div>
             </div>
             <div class="table-scroll">
                 <table id="viewListTable" class="data-table">
                     <thead id="viewListHeader"></thead>
                     <tbody id="viewListBody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Secondary: upload panel, collapsed until "Upload invitees" is clicked -->
+        <div id="uploadPanel" class="surface-card hidden" style="padding: 1.25rem;">
+            <h2 class="h6 fw-bold mb-1">Upload invitees</h2>
+            <p class="subtitle mb-3">Preview a file, then append or overwrite the <span class="mono">invitees</span> table.</p>
+
+            <div id="dropzone" class="dropzone">
+                <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" style="display:none;">
+                <label for="fileInput">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <span>
+                        <span class="primary">Click to upload or drag and drop</span><br>
+                        <span class="secondary">CSV, XLSX, or XLS files</span>
+                    </span>
+                </label>
+            </div>
+
+            <div id="summaryContainer" class="stat-strip hidden mt-3"></div>
+
+            <div id="tableContainer" class="surface-card table-card hidden mt-3">
+                <div class="table-toolbar">
+                    <span id="fileMeta" class="file-meta"></span>
+                    <div class="btn-group-actions">
+                        <button id="appendBtn" class="btn-emerald btn btn-sm btn-icon" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                            Append new records
+                        </button>
+                        <button id="overwriteBtn" class="btn-amber btn btn-sm btn-icon" type="button">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                            Overwrite entire table
+                        </button>
+                        <button id="clearBtn" class="btn-ghost btn btn-sm" type="button">Discard preview</button>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table id="csvTable" class="data-table">
+                        <thead id="tableHeader"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 

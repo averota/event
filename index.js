@@ -29,9 +29,78 @@ function trashIconSvg() {
     '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
 }
 
+// Builds the whole table body off-screen in a DocumentFragment, then
+// swaps it into the DOM in one atomic operation. This avoids a
+// visible empty-table flash mid-refresh (which a naive
+// `tableBody.innerHTML = ''` followed by a loop of `appendChild`
+// calls can produce, especially on slower devices) — the browser
+// only ever sees the old table or the new one, never a gap.
+function renderRows(rows) {
+  if (rows.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="10" class="empty-state">No registrations yet.</td></tr>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  rows.forEach((item, i) => {
+    const tr = document.createElement('tr');
+
+    const idxTd = document.createElement('td');
+    idxTd.className = 'idx-col';
+    idxTd.textContent = i + 1;
+    tr.appendChild(idxTd);
+
+    // textContent (never innerHTML) so user-submitted values can
+    // never be interpreted as HTML/script — prevents stored XSS.
+    const plainCells = [
+      formatPhnomPenhTime(item.created_at),
+      item.employee_id || '',
+      item.fullname || '',
+      item.gender || '',
+      item.position || '',
+      item.department || '',
+      item.bu || ''
+    ];
+
+    plainCells.forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+
+    const typeTd = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (item.is_invited ? 'badge-invited' : 'badge-walkin');
+    badge.textContent = item.is_invited ? 'Invited' : 'Walk-in';
+    typeTd.appendChild(badge);
+    tr.appendChild(typeTd);
+
+    // Per-row delete action. Assumes the attendees table has a
+    // primary key column called `id` — list_attendees() returns it
+    // since it selects every column. If your primary key has a
+    // different name, update both the `item.id` reference here and
+    // the admin_delete_attendee(p_id ...) RPC in
+    // supabase-security.sql to match.
+    const actionTd = document.createElement('td');
+    actionTd.className = 'actions-col';
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn-icon-only';
+    delBtn.title = 'Delete this registration';
+    delBtn.innerHTML = trashIconSvg();
+    delBtn.addEventListener('click', () => handleDeleteAttendee(item.id, item.fullname));
+    actionTd.appendChild(delBtn);
+    tr.appendChild(actionTd);
+
+    fragment.appendChild(tr);
+  });
+
+  tableBody.replaceChildren(fragment);
+}
+
 async function getData() {
   setLog('Connecting to server…');
-  tableBody.innerHTML = '';
 
   try {
     // Both RPCs are SECURITY DEFINER functions restricted to the
@@ -55,60 +124,8 @@ async function getData() {
     const data = listRes.data || [];
     localRows = data;
 
-    if (data.length === 0) {
-      setLog('Connected! No registrations yet.');
-      tableBody.innerHTML = '<tr><td colspan="9" class="empty-state">No registrations yet.</td></tr>';
-      return;
-    }
-
-    setLog(`Loaded ${data.length} registrations.`);
-
-    data.forEach(item => {
-      const tr = document.createElement('tr');
-
-      // textContent (never innerHTML) so user-submitted values can
-      // never be interpreted as HTML/script — prevents stored XSS.
-      const plainCells = [
-        formatPhnomPenhTime(item.created_at),
-        item.employee_id || '',
-        item.fullname || '',
-        item.gender || '',
-        item.position || '',
-        item.department || '',
-        item.bu || ''
-      ];
-
-      plainCells.forEach(value => {
-        const td = document.createElement('td');
-        td.textContent = value;
-        tr.appendChild(td);
-      });
-
-      const typeTd = document.createElement('td');
-      const badge = document.createElement('span');
-      badge.className = 'badge ' + (item.is_invited ? 'badge-invited' : 'badge-walkin');
-      badge.textContent = item.is_invited ? 'Invited' : 'Walk-in';
-      typeTd.appendChild(badge);
-      tr.appendChild(typeTd);
-
-      // Per-row delete action. Assumes the attendees table has a
-      // primary key column called `id` — list_attendees() returns it
-      // since it selects every column. If your primary key has a
-      // different name, update both the `item.id` reference here and
-      // the admin_delete_attendee(p_id ...) RPC in
-      // supabase-security.sql to match.
-      const actionTd = document.createElement('td');
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'btn-icon-only';
-      delBtn.title = 'Delete this registration';
-      delBtn.innerHTML = trashIconSvg();
-      delBtn.addEventListener('click', () => handleDeleteAttendee(item.id, item.fullname));
-      actionTd.appendChild(delBtn);
-      tr.appendChild(actionTd);
-
-      tableBody.appendChild(tr);
-    });
+    renderRows(data);
+    setLog(data.length === 0 ? 'Connected! No registrations yet.' : `Loaded ${data.length} registrations.`);
 
   } catch (err) {
     setLog('CRITICAL SCRIPT ERROR: ' + err.message, true);
@@ -160,11 +177,13 @@ document.getElementById('clearAttendeesBtn').addEventListener('click', async () 
 });
 
 // Excel export (SheetJS, loaded globally via the CDN <script> tag in
-// index.html — same library invitees.html already uses).
+// index.html — same library invitees.html already uses). Includes a
+// leading index column matching the on-screen "#" column.
 document.getElementById('dlBtn').addEventListener('click', () => {
   if (localRows.length === 0) { alert('No rows to export'); return; }
 
-  const exportRows = localRows.map(r => ({
+  const exportRows = localRows.map((r, i) => ({
+    'No.': i + 1,
     'Registered At (UTC+7)': formatPhnomPenhTime(r.created_at),
     'Employee ID': r.employee_id || '',
     'Full Name': r.fullname || '',
@@ -197,7 +216,8 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 // policies as regular queries — only a logged-in `authenticated`
 // user (which is who's ever viewing this page, thanks to
 // authGuard.js) can receive these events, so this doesn't open up
-// any new access.
+// any new access. This only touches the stats/table, not the whole
+// page, so a new registration never causes a full-page reload.
 // ------------------------------------------------------------
 supabase
   .channel('attendees-changes')

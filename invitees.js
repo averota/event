@@ -18,9 +18,6 @@ import { confirmDialog } from './assets/confirmDialog.js';
 
 const TABLE_NAME = 'invitees';
 
-// TODO: set this to your home page URL
-const HOME_URL = './index.html';
-
 // Schema definition: db column -> accepted header aliases (normalized)
 const SCHEMA_FIELDS = {
     employee_id: ['employeeid', 'empid', 'employeeno', 'employeenumber', 'id'],
@@ -54,6 +51,8 @@ function trashIconSvg() {
 }
 
 // DOM refs
+const toggleUploadBtn = document.getElementById('toggleUploadBtn');
+const uploadPanel = document.getElementById('uploadPanel');
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const tableContainer = document.getElementById('tableContainer');
@@ -68,16 +67,14 @@ const appendBtn = document.getElementById('appendBtn');
 const overwriteBtn = document.getElementById('overwriteBtn');
 const clearInviteesBtn = document.getElementById('clearInviteesBtn');
 
-const viewListBtn = document.getElementById('viewListBtn');
-const viewListContainer = document.getElementById('viewListContainer');
+const refreshListBtn = document.getElementById('refreshListBtn');
 const viewListMeta = document.getElementById('viewListMeta');
 const viewListHeader = document.getElementById('viewListHeader');
 const viewListBody = document.getElementById('viewListBody');
 const downloadXlsxBtn = document.getElementById('downloadXlsxBtn');
-const closeViewListBtn = document.getElementById('closeViewListBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 
-let currentViewList = null;
+let currentViewList = [];
 let currentDataset = null;
 
 logoutBtn.addEventListener('click', async () => {
@@ -85,12 +82,27 @@ logoutBtn.addEventListener('click', async () => {
     window.location.replace('./login.html');
 });
 
+// ---------------------------------------------------------------
+// Upload panel is secondary/collapsed by default — only the button
+// click opens it, and it auto-collapses again after a successful
+// append/overwrite so the page returns to showing the list.
+// ---------------------------------------------------------------
+function setUploadPanelOpen(open) {
+    uploadPanel.classList.toggle('hidden', !open);
+    toggleUploadBtn.classList.toggle('btn-brand', !open);
+    toggleUploadBtn.classList.toggle('btn-ghost', open);
+}
+
+toggleUploadBtn.addEventListener('click', () => {
+    setUploadPanelOpen(uploadPanel.classList.contains('hidden'));
+});
+
 // File input handling
 fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    resetView();
+    resetUploadPreview();
     fileMeta.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
 
     const reader = new FileReader();
@@ -198,12 +210,16 @@ function renderSummary(ds) {
     `;
 }
 
+// Renders headerEl/bodyEl atomically via DocumentFragment so a
+// refresh never shows a visibly empty table mid-update. Pass
+// onDelete to add a trash-icon actions column (used for the live
+// invitee list, not for the not-yet-saved upload preview).
 function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true, onDelete = null) {
     const colCount = fields.length + 1 + (onDelete ? 1 : 0); // +1 for index, +1 for actions
 
     let headerHtml = '<tr><th class="idx-col">#</th>';
     fields.forEach(field => { headerHtml += `<th>${escapeHtml(HEADER_LABELS[field] || field)}</th>`; });
-    if (onDelete) headerHtml += '<th></th>';
+    if (onDelete) headerHtml += `<th class="actions-col">${trashIconSvg()}</th>`;
     headerHtml += '</tr>';
     headerEl.innerHTML = headerHtml;
 
@@ -212,7 +228,7 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
         return;
     }
 
-    bodyEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     rows.slice(0, cap).forEach((row, i) => {
         const tr = document.createElement('tr');
 
@@ -229,6 +245,7 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
 
         if (onDelete) {
             const actionTd = document.createElement('td');
+            actionTd.className = 'actions-col';
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'btn-icon-only';
@@ -239,7 +256,7 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
             tr.appendChild(actionTd);
         }
 
-        bodyEl.appendChild(tr);
+        fragment.appendChild(tr);
     });
 
     if (capNote && rows.length > cap) {
@@ -250,8 +267,10 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
         noteTd.style.color = 'var(--text-faint)';
         noteTd.textContent = `Preview capped at first ${cap} rows — all rows are still included in downloads/uploads.`;
         noteTr.appendChild(noteTd);
-        bodyEl.appendChild(noteTr);
+        fragment.appendChild(noteTr);
     }
+
+    bodyEl.replaceChildren(fragment);
 }
 
 function showError(message) {
@@ -264,43 +283,23 @@ function showStatus(html) {
     statusContainer.classList.remove('hidden');
 }
 
-function showSuccessAndReset(message) {
-    fileInput.value = '';
-    errorContainer.classList.add('hidden');
-    summaryContainer.classList.add('hidden');
-    tableContainer.classList.add('hidden');
-    tableHeader.innerHTML = '';
-    tableBody.innerHTML = '';
-    currentDataset = null;
-    dropzone.classList.remove('compact');
-
-    showStatus(`
-        <div class="status-row">
-            <span class="num-emerald">${escapeHtml(message)}</span>
-            <a href="${HOME_URL}" class="btn btn-ghost">Go to Home</a>
-        </div>
-    `);
-}
-
-function resetView() {
+function clearMessages() {
     errorContainer.classList.add('hidden');
     statusContainer.classList.add('hidden');
+}
+
+function resetUploadPreview() {
+    errorContainer.classList.add('hidden');
     summaryContainer.classList.add('hidden');
     tableContainer.classList.add('hidden');
     tableHeader.innerHTML = '';
     tableBody.innerHTML = '';
     currentDataset = null;
     dropzone.classList.remove('compact');
-    viewListContainer.classList.add('hidden');
-    viewListHeader.innerHTML = '';
-    viewListBody.innerHTML = '';
-    currentViewList = null;
+    fileInput.value = '';
 }
 
-clearBtn.addEventListener('click', () => {
-    fileInput.value = '';
-    resetView();
-});
+clearBtn.addEventListener('click', resetUploadPreview);
 
 function escapeHtml(str) {
     return String(str)
@@ -326,6 +325,27 @@ async function fetchAllInvitees() {
     if (error) throw error;
     return data || [];
 }
+
+// The single function that (re)loads and (re)renders the main
+// invitee list — called on page load, after Refresh, and after any
+// append/overwrite/delete/clear action, so the list is always the
+// source of truth rather than something the user has to remember to
+// reload themselves.
+async function refreshInviteeList() {
+    try {
+        const rows = await fetchAllInvitees();
+        currentViewList = rows;
+        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
+        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
+    } catch (err) {
+        showError(`Failed to load invitee list: ${err.message}`);
+    }
+}
+
+refreshListBtn.addEventListener('click', () => {
+    clearMessages();
+    refreshInviteeList();
+});
 
 appendBtn.addEventListener('click', async () => {
     if (!currentDataset || currentDataset.validRows.length === 0) return;
@@ -354,7 +374,10 @@ appendBtn.addEventListener('click', async () => {
         const { error } = await db.rpc('admin_append_invitees', { p_rows: rowsToInsert });
         if (error) throw error;
 
-        showSuccessAndReset(`Success — appended ${rowsToInsert.length} record(s). Skipped ${alreadyExistCount} existing record(s).`);
+        resetUploadPreview();
+        setUploadPanelOpen(false);
+        await refreshInviteeList();
+        showStatus(`<span class="num-emerald">Success — appended ${rowsToInsert.length} record(s). Skipped ${alreadyExistCount} existing record(s).</span>`);
     } catch (err) {
         showStatus(`<span class="num-rose">Append failed: ${escapeHtml(err.message || String(err))}</span>`);
     } finally {
@@ -381,7 +404,10 @@ overwriteBtn.addEventListener('click', async () => {
         const { error } = await db.rpc('admin_overwrite_invitees', { p_rows: currentDataset.validRows });
         if (error) throw error;
 
-        showSuccessAndReset(`Success — table overwritten with ${currentDataset.validRows.length} record(s).`);
+        resetUploadPreview();
+        setUploadPanelOpen(false);
+        await refreshInviteeList();
+        showStatus(`<span class="num-emerald">Success — table overwritten with ${currentDataset.validRows.length} record(s).</span>`);
     } catch (err) {
         showStatus(`<span class="num-rose">Overwrite failed: ${escapeHtml(err.message || String(err))}</span>`);
     } finally {
@@ -403,12 +429,8 @@ clearInviteesBtn.addEventListener('click', async () => {
         showStatus('Clearing invitees…');
         const { error } = await db.rpc('admin_clear_invitees');
         if (error) throw error;
+        await refreshInviteeList();
         showStatus('<span class="num-emerald">All invitee records cleared.</span>');
-        if (currentViewList) {
-            currentViewList = [];
-            renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), [], 1000, true, handleDeleteInvitee);
-            viewListMeta.textContent = `0 record(s) in "${TABLE_NAME}"`;
-        }
     } catch (err) {
         showStatus(`<span class="num-rose">Clear failed: ${escapeHtml(err.message || String(err))}</span>`);
     } finally {
@@ -428,49 +450,20 @@ async function handleDeleteInvitee(row) {
     try {
         const { error } = await db.rpc('admin_delete_invitee', { p_employee_id: row.employee_id });
         if (error) throw error;
+        await refreshInviteeList();
         showStatus(`<span class="num-emerald">Deleted "${escapeHtml(row.fullname || row.employee_id)}".</span>`);
-        const rows = await fetchAllInvitees();
-        currentViewList = rows;
-        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
-        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
     } catch (err) {
         showStatus(`<span class="num-rose">Delete failed: ${escapeHtml(err.message || String(err))}</span>`);
     }
 }
 
-viewListBtn.addEventListener('click', async () => {
-    viewListBtn.disabled = true;
-    try {
-        showStatus('Loading invitee list from Supabase…');
-        const rows = await fetchAllInvitees();
-        currentViewList = rows;
-
-        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
-        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
-        viewListContainer.classList.remove('hidden');
-        statusContainer.classList.add('hidden');
-        tableContainer.classList.add('hidden');
-        summaryContainer.classList.add('hidden');
-    } catch (err) {
-        showStatus(`<span class="num-rose">Failed to load invitee list: ${escapeHtml(err.message || String(err))}</span>`);
-    } finally {
-        viewListBtn.disabled = false;
-    }
-});
-
-closeViewListBtn.addEventListener('click', () => {
-    viewListContainer.classList.add('hidden');
-    viewListHeader.innerHTML = '';
-    viewListBody.innerHTML = '';
-    currentViewList = null;
-});
-
-// Excel-only export (SheetJS) — friendly headers, not raw field names.
-function downloadInviteeList() {
-    if (!currentViewList || currentViewList.length === 0) return;
+// Excel-only export (SheetJS) — friendly headers and a leading index
+// column, matching the on-screen "#" column.
+downloadXlsxBtn.addEventListener('click', () => {
+    if (!currentViewList || currentViewList.length === 0) { alert('No rows to export'); return; }
     const allSchemaFields = Object.keys(SCHEMA_FIELDS);
-    const exportRows = currentViewList.map(row => {
-        const out = {};
+    const exportRows = currentViewList.map((row, i) => {
+        const out = { 'No.': i + 1 };
         allSchemaFields.forEach(f => { out[HEADER_LABELS[f] || f] = row[f] ?? ''; });
         return out;
     });
@@ -479,6 +472,8 @@ function downloadInviteeList() {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Invitees');
     const filename = `invitees_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(workbook, filename);
-}
+});
 
-downloadXlsxBtn.addEventListener('click', downloadInviteeList);
+// Load the list immediately on open — uploading is a secondary,
+// opt-in action via the "Upload invitees" button, not the default view.
+window.addEventListener('DOMContentLoaded', refreshInviteeList);

@@ -44,11 +44,16 @@
 
 * { box-sizing: border-box; }
 
+html {
+  background: var(--bg);
+}
+
 body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  transition: opacity .15s ease;
 }
 
 a { color: var(--accent); }
@@ -258,6 +263,19 @@ a { color: var(--accent); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td { background: #FAFBFC; }
 .data-table .empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* Actions/trash column — same header+cell treatment wherever a
+   per-row delete button appears (index.html and invitees.html). */
+.data-table th.actions-col, .data-table td.actions-col {
+  text-align: center;
+  width: 1%;
+  white-space: nowrap;
+}
+.data-table th.actions-col svg {
+  width: 14px; height: 14px;
+  color: var(--text-faint);
+  vertical-align: middle;
+}
 
 /* ---------- Employee verification card (register flow) ---------- */
 .employee-card {

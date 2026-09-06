@@ -5,9 +5,14 @@
 // (index.html, invitees.html).
 //
 // Security notes vs. the previous version:
-//  - Page content is hidden (visibility:hidden) until the check
-//    resolves, so an unauthenticated visitor never sees a flash of
-//    real data before the redirect fires.
+//  - Page content fades in only after the check resolves, so an
+//    unauthenticated visitor never sees a flash of real data before
+//    the redirect fires.
+//  - We hide document.body (not document.documentElement) and set
+//    the html background via CSS (assets/styles.css) so the brief
+//    hidden window shows the app's own background color instead of
+//    a jarring blank-white flash — html itself stays visible and
+//    keeps painting its background even while body is hidden.
 //  - Uses supabase.auth.getUser() rather than getSession() for the
 //    initial check. getSession() only reads the token that's already
 //    sitting in local storage and does NOT verify it; getUser() makes
@@ -18,7 +23,7 @@
 //    security boundary).
 import { supabase } from './supabaseClient.js';
 
-document.documentElement.style.visibility = 'hidden';
+document.body.style.opacity = '0';
 
 function goToLogin() {
   // Relative path (not '/login.html') so this works whether the site
@@ -34,7 +39,7 @@ async function checkAuth() {
       goToLogin();
       return;
     }
-    document.documentElement.style.visibility = 'visible';
+    document.body.style.opacity = '1';
   } catch (e) {
     goToLogin();
   }
