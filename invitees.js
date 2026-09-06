@@ -68,6 +68,7 @@ const overwriteBtn = document.getElementById('overwriteBtn');
 const clearInviteesBtn = document.getElementById('clearInviteesBtn');
 
 const refreshListBtn = document.getElementById('refreshListBtn');
+const viewListContainer = document.getElementById('viewListContainer');
 const viewListMeta = document.getElementById('viewListMeta');
 const viewListHeader = document.getElementById('viewListHeader');
 const viewListBody = document.getElementById('viewListBody');
@@ -85,12 +86,19 @@ logoutBtn.addEventListener('click', async () => {
 // ---------------------------------------------------------------
 // Upload panel is secondary/collapsed by default — only the button
 // click opens it, and it auto-collapses again after a successful
-// append/overwrite so the page returns to showing the list.
+// append/overwrite so the page returns to showing the list. While
+// the panel is open, the invitee list is hidden so the upload flow
+// has the page's full attention; it reappears (refreshed) once the
+// panel closes.
 // ---------------------------------------------------------------
 function setUploadPanelOpen(open) {
     uploadPanel.classList.toggle('hidden', !open);
-    toggleUploadBtn.classList.toggle('btn-brand', !open);
-    toggleUploadBtn.classList.toggle('btn-ghost', open);
+    viewListContainer.classList.toggle('hidden', open);
+    if (open) {
+        // Always start from a clean, full-size dropzone when opening —
+        // any leftover preview from a previous visit is discarded.
+        resetUploadPreview();
+    }
 }
 
 toggleUploadBtn.addEventListener('click', () => {
@@ -219,7 +227,7 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
 
     let headerHtml = '<tr><th class="idx-col">#</th>';
     fields.forEach(field => { headerHtml += `<th>${escapeHtml(HEADER_LABELS[field] || field)}</th>`; });
-    if (onDelete) headerHtml += `<th class="actions-col">${trashIconSvg()}</th>`;
+    if (onDelete) headerHtml += `<th class="actions-col">Delete</th>`;
     headerHtml += '</tr>';
     headerEl.innerHTML = headerHtml;
 
