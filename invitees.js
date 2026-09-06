@@ -74,6 +74,7 @@ const viewListHeader = document.getElementById('viewListHeader');
 const viewListBody = document.getElementById('viewListBody');
 const downloadXlsxBtn = document.getElementById('downloadXlsxBtn');
 const logoutBtn = document.getElementById('logoutBtn');
+const dangerZone = document.getElementById('dangerZone');
 
 let currentViewList = [];
 let currentDataset = null;
@@ -94,6 +95,7 @@ logoutBtn.addEventListener('click', async () => {
 function setUploadPanelOpen(open) {
     uploadPanel.classList.toggle('hidden', !open);
     viewListContainer.classList.toggle('hidden', open);
+    dangerZone.classList.toggle('hidden', open);
     if (open) {
         // Always start from a clean, full-size dropzone when opening —
         // any leftover preview from a previous visit is discarded.
