@@ -2,6 +2,7 @@
 # to assets/config.js locally, or generate it in CI (see
 # .github/workflows/deploy.yml).
 assets/config.js
+event-portal.code-workspace
 
 # OS / editor noise
 .DS_Store
