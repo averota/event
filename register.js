@@ -5,7 +5,7 @@
 // register_participant). The anon key can call ONLY these two
 // functions; it has no direct table access (see supabase-security.sql).
 // This is why register.html is safe to leave open to walk-in users
-// while dashboard.html/invitees.html require a logged-in session.
+// while index.html/invitees.html require a logged-in session.
 import { supabase } from './assets/supabaseClient.js';
 
 async function callBackend(action, payload) {

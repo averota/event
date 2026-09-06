@@ -53,6 +53,48 @@ body {
 
 a { color: var(--accent); }
 
+/* ---------- App nav bar (index.html / invitees.html) ---------- */
+.app-navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.app-navbar .brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-navbar .brand .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.app-navbar nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.app-navbar nav a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  transition: background .12s ease, color .12s ease;
+}
+.app-navbar nav a:hover { background: var(--ghost-bg); color: var(--text); }
+.app-navbar nav a.active { background: var(--accent-soft); color: var(--accent); }
+.app-navbar .navbar-actions { display: flex; align-items: center; gap: 8px; }
+
 /* ---------- Layout shells ---------- */
 .app-shell {
   max-width: 1180px;

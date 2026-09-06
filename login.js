@@ -40,10 +40,10 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// If already signed in (verified server-side), skip straight to the dashboard.
+// If already signed in (verified server-side), skip straight to the homepage.
 (async function redirectIfLoggedIn() {
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) window.location.replace('/dashboard.html');
+  if (user) window.location.replace('./index.html');
 })();
 
 form.addEventListener('submit', async (e) => {
@@ -65,7 +65,7 @@ form.addEventListener('submit', async (e) => {
   try {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    window.location.replace('/dashboard.html');
+    window.location.replace('./index.html');
   } catch (err) {
     // Deliberately generic — never reveal whether the email exists.
     errorBanner.textContent = 'Invalid email or password.';
@@ -99,7 +99,11 @@ forgotForm.addEventListener('submit', async (e) => {
 
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/login.html'
+      // Resolved relative to the current page URL (not origin + a
+      // hardcoded path) so this still points at the right place
+      // whether the site is served at a domain root or under a
+      // GitHub Pages subpath like https://yourname.github.io/event/.
+      redirectTo: new URL('login.html', window.location.href).toString()
     });
     if (error) throw error;
 

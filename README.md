@@ -6,8 +6,14 @@ Static site, no build step required. Four pages:
 |------------------|---------------------------|---------|
 | `register.html`  | Public (kiosk, no login)  | Employees/walk-ins self check-in |
 | `login.html`     | Public                    | Admin sign-in |
-| `dashboard.html` | Logged-in admins only     | Attendance overview + CSV export |
+| `index.html`     | Logged-in admins only     | Homepage — attendance overview + CSV export |
 | `invitees.html`  | Logged-in admins only     | Upload/manage the invite list |
+
+`index.html` is the site's root/homepage (GitHub Pages and most static
+hosts serve it automatically at `/`). `register.html` is the only
+public-facing page — link to it separately (e.g. from a kiosk device
+or a QR code) rather than from the admin nav bar, since it isn't meant
+for admins to browse to.
 
 ## Setup
 

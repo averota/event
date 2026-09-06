@@ -17,7 +17,18 @@
 </head>
 <body>
 
-    <div class="wrap stack">
+    <div class="app-navbar">
+        <div class="brand"><span class="dot"></span>Event Portal</div>
+        <nav>
+            <a href="./index.html">Dashboard</a>
+            <a href="./invitees.html" class="active">Invitees</a>
+        </nav>
+        <div class="navbar-actions">
+            <button id="logoutBtn" class="btn btn-outline-secondary btn-sm" type="button">Log out</button>
+        </div>
+    </div>
+
+    <div class="wrap stack" style="margin-top: 1.5rem;">
 
         <div class="top-row">
             <div class="title-block">
@@ -26,7 +37,6 @@
             </div>
             <div class="d-flex gap-2">
                 <button id="viewListBtn" class="btn-ghost btn">View invitee list</button>
-                <button id="logoutBtn" class="btn btn-outline-secondary">Log out</button>
             </div>
         </div>
 

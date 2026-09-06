@@ -17,8 +17,7 @@ import { supabase as db } from './assets/supabaseClient.js';
 
 const TABLE_NAME = 'invitees';
 
-// TODO: set this to your home page URL
-const HOME_URL = '#';
+const HOME_URL = './index.html';
 
 // Schema definition: db column -> accepted header aliases (normalized)
 const SCHEMA_FIELDS = {
@@ -70,7 +69,7 @@ let currentDataset = null;
 
 logoutBtn.addEventListener('click', async () => {
     await db.auth.signOut();
-    window.location.replace('/login.html');
+    window.location.replace('./login.html');
 });
 
 // File input handling

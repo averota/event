@@ -17,9 +17,22 @@ permissions:
   pages: write
   id-token: write
 
+# Ensures only one deploy runs at a time. Without this, two overlapping
+# runs (e.g. from re-running a job, or pushing twice quickly) can each
+# try to upload an artifact named "github-pages" in the same run,
+# which Pages rejects with "Multiple artifacts named github-pages
+# were unexpectedly found". Cancelling the older, still-running deploy
+# whenever a newer one starts avoids that entirely.
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 

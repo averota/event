@@ -2,7 +2,7 @@
 //
 // Include this as the very first <script type="module"> on any page
 // that must only be visible to a logged-in Supabase user
-// (dashboard.html, invitees.html).
+// (index.html, invitees.html).
 //
 // Security notes vs. the previous version:
 //  - Page content is hidden (visibility:hidden) until the check
@@ -21,7 +21,10 @@ import { supabase } from './supabaseClient.js';
 document.documentElement.style.visibility = 'hidden';
 
 function goToLogin() {
-  window.location.replace('/login.html');
+  // Relative path (not '/login.html') so this works whether the site
+  // is served at a domain root or under a GitHub Pages subpath like
+  // https://yourname.github.io/event/.
+  window.location.replace('./login.html');
 }
 
 async function checkAuth() {

@@ -1,4 +1,4 @@
-// dashboard.js
+// index.js — logic for the homepage (index.html)
 import { supabase } from './assets/supabaseClient.js';
 
 const logBox = document.getElementById('logTerminal');
@@ -128,7 +128,7 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 document.getElementById('rfBtn').addEventListener('click', getData);
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await supabase.auth.signOut();
-  window.location.replace('/login.html');
+  window.location.replace('./login.html');
 });
 
 window.addEventListener('DOMContentLoaded', getData);
