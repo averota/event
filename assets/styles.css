@@ -129,6 +129,48 @@ a { color: var(--accent); }
 }
 .btn-ghost:hover { background: var(--ghost-bg-hover); color: var(--ghost); }
 
+.btn-emerald { background: var(--success); border-color: var(--success); color: #fff; }
+.btn-emerald:hover:not(:disabled) { background: #047857; border-color: #047857; color: #fff; }
+.btn-amber { background: var(--warning); border-color: var(--warning); color: #fff; }
+.btn-amber:hover:not(:disabled) { background: #B45309; border-color: #B45309; color: #fff; }
+.btn-rose { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-rose:hover:not(:disabled) { background: #BE123C; border-color: #BE123C; color: #fff; }
+
+/* Buttons with a leading/trailing icon */
+.btn-icon { display: inline-flex; align-items: center; gap: 6px; }
+.btn-icon svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Icon-only button, e.g. a per-row delete action in a table */
+.btn-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.btn-icon-only:hover { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.btn-icon-only svg { width: 14px; height: 14px; }
+
+/* Danger zone panel (destructive/irreversible actions) */
+.danger-zone {
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.danger-zone h3 {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--danger);
+  margin: 0 0 4px;
+}
+.danger-zone h3 svg { width: 16px; height: 16px; }
+.danger-zone p { font-size: 12.5px; color: var(--text-muted); margin: 0 0 12px; }
+.danger-zone .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* ---------- Cards ---------- */
 .surface-card {
   background: var(--surface);
@@ -190,8 +232,12 @@ a { color: var(--accent); }
 }
 
 /* ---------- Data table ---------- */
+/* Kantumruy Pro renders Khmer names/text correctly; load it via
+   <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro..."> 
+   in any page that includes a .data-table (already done in
+   index.html and invitees.html). */
 .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.data-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 12.5px; }
+.data-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 12.5px; font-family: 'Kantumruy Pro', var(--sans); }
 .data-table thead th {
   position: sticky; top: 0;
   background: #FAFBFC;
@@ -263,6 +309,18 @@ a { color: var(--accent); }
   padding: 1rem; z-index: 50;
 }
 .modal-overlay.hidden { display: none; }
+
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 100%;
+}
+.modal-box h3 { font-size: 1.125rem; font-weight: 600; margin: 0 0 1rem 0; }
+.modal-box .modal-body { font-size: 0.875rem; color: var(--text); white-space: pre-line; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1.25rem; }
 
 /* ---------- Utility ---------- */
 .hidden { display: none !important; }

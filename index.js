@@ -1,7 +1,9 @@
 // index.js — logic for the homepage (index.html)
 import { supabase } from './assets/supabaseClient.js';
+import { confirmDialog } from './assets/confirmDialog.js';
 
 const logBox = document.getElementById('logTerminal');
+const tableBody = document.getElementById('tableBody');
 let localRows = [];
 
 function setLog(text, isError = false) {
@@ -21,10 +23,15 @@ function formatPhnomPenhTime(inputStr) {
   return `${map.day}-${map.month}-${map.year} ${map.hour}:${map.minute}`;
 }
 
+function trashIconSvg() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+}
+
 async function getData() {
   setLog('Connecting to server…');
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = '';
+  tableBody.innerHTML = '';
 
   try {
     // Both RPCs are SECURITY DEFINER functions restricted to the
@@ -50,7 +57,7 @@ async function getData() {
 
     if (data.length === 0) {
       setLog('Connected! No registrations yet.');
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No registrations yet.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="9" class="empty-state">No registrations yet.</td></tr>';
       return;
     }
 
@@ -84,7 +91,23 @@ async function getData() {
       typeTd.appendChild(badge);
       tr.appendChild(typeTd);
 
-      tbody.appendChild(tr);
+      // Per-row delete action. Assumes the attendees table has a
+      // primary key column called `id` — list_attendees() returns it
+      // since it selects every column. If your primary key has a
+      // different name, update both the `item.id` reference here and
+      // the admin_delete_attendee(p_id ...) RPC in
+      // supabase-security.sql to match.
+      const actionTd = document.createElement('td');
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon-only';
+      delBtn.title = 'Delete this registration';
+      delBtn.innerHTML = trashIconSvg();
+      delBtn.addEventListener('click', () => handleDeleteAttendee(item.id, item.fullname));
+      actionTd.appendChild(delBtn);
+      tr.appendChild(actionTd);
+
+      tableBody.appendChild(tr);
     });
 
   } catch (err) {
@@ -92,37 +115,70 @@ async function getData() {
   }
 }
 
-// Escapes a single CSV field: doubles internal quotes, wraps in quotes,
-// and neutralizes formula-injection characters (=, +, -, @) that Excel
-// or Sheets could otherwise execute.
-function escapeCsvField(value) {
-  let str = String(value ?? '');
-  if (/^[=+\-@]/.test(str)) str = "'" + str;
-  return `"${str.replace(/"/g, '""')}"`;
+async function handleDeleteAttendee(id, fullname) {
+  if (id === undefined || id === null) {
+    alert('This row has no id to delete by — check the admin_delete_attendee setup in supabase-security.sql matches your schema.');
+    return;
+  }
+
+  const confirmed = await confirmDialog({
+    title: 'Delete registration',
+    body: `Permanently delete the registration for "${fullname || id}"? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    danger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    const { error } = await supabase.rpc('admin_delete_attendee', { p_id: id });
+    if (error) throw error;
+    setLog(`Deleted registration for "${fullname || id}".`);
+    getData();
+  } catch (err) {
+    setLog('Delete failed: ' + err.message, true);
+  }
 }
 
+document.getElementById('clearAttendeesBtn').addEventListener('click', async () => {
+  const confirmed = await confirmDialog({
+    title: 'Clear all attendees',
+    body: 'This will PERMANENTLY DELETE every registration record. The invite list is not affected. This cannot be undone.',
+    confirmLabel: 'Clear all attendees',
+    danger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    setLog('Clearing attendees…');
+    const { error } = await supabase.rpc('admin_clear_attendees');
+    if (error) throw error;
+    setLog('All attendee records cleared.');
+    getData();
+  } catch (err) {
+    setLog('Clear failed: ' + err.message, true);
+  }
+});
+
+// Excel export (SheetJS, loaded globally via the CDN <script> tag in
+// index.html — same library invitees.html already uses).
 document.getElementById('dlBtn').addEventListener('click', () => {
   if (localRows.length === 0) { alert('No rows to export'); return; }
 
-  let csv = 'Registered At (UTC+7),Employee ID,Full Name,Gender,Position,Department,Business Unit,Type\n';
-  localRows.forEach(r => {
-    csv += [
-      escapeCsvField(formatPhnomPenhTime(r.created_at)),
-      escapeCsvField(r.employee_id),
-      escapeCsvField(r.fullname),
-      escapeCsvField(r.gender),
-      escapeCsvField(r.position),
-      escapeCsvField(r.department),
-      escapeCsvField(r.bu),
-      escapeCsvField(r.is_invited ? 'Invited' : 'Walk-in')
-    ].join(',') + '\n';
-  });
+  const exportRows = localRows.map(r => ({
+    'Registered At (UTC+7)': formatPhnomPenhTime(r.created_at),
+    'Employee ID': r.employee_id || '',
+    'Full Name': r.fullname || '',
+    'Gender': r.gender || '',
+    'Position': r.position || '',
+    'Department': r.department || '',
+    'Business Unit': r.bu || '',
+    'Type': r.is_invited ? 'Invited' : 'Walk-in'
+  }));
 
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const link = document.createElement('a');
-  link.href = window.URL.createObjectURL(blob);
-  link.download = 'attendance_export.csv';
-  link.click();
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+  XLSX.writeFile(workbook, `attendance_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
 });
 
 document.getElementById('rfBtn').addEventListener('click', getData);
@@ -130,5 +186,29 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   await supabase.auth.signOut();
   window.location.replace('./login.html');
 });
+
+// ------------------------------------------------------------
+// Live updates: refresh automatically whenever a new registration
+// row is inserted, instead of requiring a manual "Refresh" click.
+//
+// Requires `alter publication supabase_realtime add table
+// public.attendees;` to have been run once (see
+// supabase-security.sql, section 5). Realtime enforces the same RLS
+// policies as regular queries — only a logged-in `authenticated`
+// user (which is who's ever viewing this page, thanks to
+// authGuard.js) can receive these events, so this doesn't open up
+// any new access.
+// ------------------------------------------------------------
+supabase
+  .channel('attendees-changes')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'attendees' },
+    () => {
+      setLog('New registration received — refreshing…');
+      getData();
+    }
+  )
+  .subscribe();
 
 window.addEventListener('DOMContentLoaded', getData);

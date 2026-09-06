@@ -2,18 +2,19 @@
 -- Supabase security hardening
 -- Run this in the Supabase SQL editor (Project → SQL Editor).
 --
--- ADAPT THE NAMES: this assumes a table called `invitees` (columns:
--- employee_id, fullname, gender, position, department, bu) and an
--- attendance/registration table — rename `attendance` below to
--- whatever your registrations table is actually called, and adjust
--- the RPC bodies (check_employee / register_participant /
--- get_dashboard_stats / list_attendees) to match your existing
--- function definitions if they already exist with different logic.
+-- This assumes two tables:
+--   invitees  — the invite list (columns: employee_id, fullname,
+--               gender, position, department, bu)
+--   attendees — people who have actually registered/checked in
+-- If your columns differ, adjust the RPC bodies below
+-- (check_employee / register_participant / get_dashboard_stats /
+-- list_attendees) to match your existing function definitions if
+-- they already exist with different logic.
 --
 -- GOAL: nothing is reachable with the public anon key except the two
 -- narrow, purpose-built RPCs the public kiosk (register.html) needs.
 -- Everything else requires a real logged-in Supabase Auth user
--- (`authenticated` role), which is what login.html/dashboard.html/
+-- (`authenticated` role), which is what login.html/index.html/
 -- invitees.html now enforce.
 -- ============================================================
 
@@ -23,15 +24,15 @@
 --    also revoke the table-level grants Supabase creates by default.
 -- ------------------------------------------------------------
 alter table public.invitees   enable row level security;
-alter table public.attendance enable row level security;
+alter table public.attendees enable row level security;
 
 revoke all on public.invitees   from anon, authenticated, public;
-revoke all on public.attendance from anon, authenticated, public;
+revoke all on public.attendees from anon, authenticated, public;
 
 -- Drop any pre-existing permissive policies before re-adding ours
 -- (safe no-ops if they don't exist).
 drop policy if exists "authenticated_full_access_invitees"   on public.invitees;
-drop policy if exists "authenticated_full_access_attendance" on public.attendance;
+drop policy if exists "authenticated_full_access_attendees" on public.attendees;
 
 -- Logged-in admin users (dashboard.html / invitees.html) may read/write
 -- directly if you still want ad-hoc table access from the SQL editor
@@ -42,14 +43,14 @@ create policy "authenticated_full_access_invitees"
   using (true)
   with check (true);
 
-create policy "authenticated_full_access_attendance"
-  on public.attendance for all
+create policy "authenticated_full_access_attendees"
+  on public.attendees for all
   to authenticated
   using (true)
   with check (true);
 
 -- anon gets NO policy at all on either table => zero direct access,
--- even though the anon key is public. All anon access to attendance
+-- even though the anon key is public. All anon access to attendees
 -- data goes exclusively through check_employee / register_participant.
 
 -- ------------------------------------------------------------
@@ -85,7 +86,7 @@ grant execute on function public.check_employee(text) to anon, authenticated;
 grant execute on function public.register_participant(text, text, text, text, text, text, boolean) to anon, authenticated;
 
 -- ------------------------------------------------------------
--- 3. Admin-only RPCs (dashboard.html) — authenticated only, NEVER anon.
+-- 3. Admin-only RPCs (index.html) — authenticated only, NEVER anon.
 -- ------------------------------------------------------------
 -- create or replace function public.get_dashboard_stats()
 -- returns jsonb
@@ -95,17 +96,60 @@ grant execute on function public.register_participant(text, text, text, text, te
 -- as $$ ... $$;
 --
 -- create or replace function public.list_attendees()
--- returns setof public.attendance
+-- returns setof public.attendees
 -- language sql
 -- security definer
 -- set search_path = public
--- as $$ select * from public.attendance order by created_at desc; $$;
+-- as $$ select * from public.attendees order by created_at desc; $$;
 
 revoke execute on function public.get_dashboard_stats() from public, anon;
 revoke execute on function public.list_attendees()      from public, anon;
 
 grant execute on function public.get_dashboard_stats() to authenticated;
 grant execute on function public.list_attendees()      to authenticated;
+
+-- Delete a single attendee/registration row. Assumes a primary key
+-- column called `id` (bigint/bigserial) — adjust the parameter type
+-- and the `where` clause below if your primary key is named or typed
+-- differently (e.g. a uuid).
+create or replace function public.admin_delete_attendee(p_id bigint)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer;
+begin
+  delete from public.attendees where id = p_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+-- Wipe every attendee/registration row — used by the "Clear all
+-- attendees" button on index.html to start a fresh event on the same
+-- database without touching the invite list.
+create or replace function public.admin_clear_attendees()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer;
+begin
+  delete from public.attendees;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+revoke execute on function public.admin_delete_attendee(bigint) from public, anon;
+revoke execute on function public.admin_clear_attendees()       from public, anon;
+
+grant execute on function public.admin_delete_attendee(bigint) to authenticated;
+grant execute on function public.admin_clear_attendees()       to authenticated;
 
 -- ------------------------------------------------------------
 -- 4. Admin-only RPCs (invitees.html) — replace the old direct
@@ -174,21 +218,84 @@ begin
 end;
 $$;
 
+-- Delete a single invitee by employee_id — used by the per-row
+-- delete button in the "View invitee list" table.
+create or replace function public.admin_delete_invitee(p_employee_id text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer;
+begin
+  delete from public.invitees where employee_id = p_employee_id;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+-- Wipe every invitee row — used by the "Clear all invitees" button
+-- to start a fresh invite list without touching existing registrations.
+create or replace function public.admin_clear_invitees()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer;
+begin
+  delete from public.invitees;
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
 revoke execute on function public.admin_list_employee_ids()      from public, anon;
 revoke execute on function public.admin_list_invitees()          from public, anon;
 revoke execute on function public.admin_append_invitees(jsonb)   from public, anon;
 revoke execute on function public.admin_overwrite_invitees(jsonb) from public, anon;
+revoke execute on function public.admin_delete_invitee(text)     from public, anon;
+revoke execute on function public.admin_clear_invitees()         from public, anon;
 
 grant execute on function public.admin_list_employee_ids()       to authenticated;
 grant execute on function public.admin_list_invitees()           to authenticated;
 grant execute on function public.admin_append_invitees(jsonb)    to authenticated;
 grant execute on function public.admin_overwrite_invitees(jsonb) to authenticated;
+grant execute on function public.admin_delete_invitee(text)      to authenticated;
+grant execute on function public.admin_clear_invitees()          to authenticated;
+
 
 -- ------------------------------------------------------------
--- 5. Auth hardening (do this in the Dashboard, not SQL):
+-- 5. Live dashboard updates (Realtime).
+--    This lets index.html subscribe to new rows and refresh
+--    automatically instead of requiring a manual "Refresh" click.
+--    Realtime enforces the SAME RLS policies as normal queries, so
+--    this is safe: only a logged-in `authenticated` user can receive
+--    these change events, because that's who the RLS policy in
+--    section 1 already grants SELECT to. No anon exposure is added.
+-- ------------------------------------------------------------
+-- Idempotent: only adds the table if it isn't already publishing
+-- changes, so this script can be re-run safely without erroring on
+-- "relation is already member of publication".
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'attendees'
+  ) then
+    alter publication supabase_realtime add table public.attendees;
+  end if;
+end $$;
+
+-- ------------------------------------------------------------
+-- 6. Auth hardening (do this in the Dashboard, not SQL):
 --    Authentication → Providers → Email:
 --      - Turn OFF "Allow new users to sign up" — accounts for
---        dashboard.html/invitees.html should only be created by an
+--        index.html/invitees.html should only be created by an
 --        admin (Authentication → Users → Add user), matching the
 --        requirement that login uses pre-created Supabase users.
 --    Authentication → URL Configuration:

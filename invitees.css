@@ -35,17 +35,7 @@
 .file-meta { font-size: 0.75rem; font-family: var(--mono); color: var(--text-muted); }
 .btn-group-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-.btn-emerald { background: var(--success); border-color: var(--success); color: #fff; }
-.btn-emerald:hover:not(:disabled) { background: #047857; border-color: #047857; color: #fff; }
-.btn-amber { background: var(--warning); border-color: var(--warning); color: #fff; }
-.btn-amber:hover:not(:disabled) { background: #B45309; border-color: #B45309; color: #fff; }
-.btn-rose { background: var(--danger); border-color: var(--danger); color: #fff; }
-.btn-rose:hover:not(:disabled) { background: #BE123C; border-color: #BE123C; color: #fff; }
-
 .table-scroll { overflow: auto; max-height: 70vh; }
 .idx-col { color: var(--text-faint); text-align: right; width: 1%; padding-left: 1rem; padding-right: 1rem; }
 
-.modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; max-width: 28rem; width: 100%; }
-.modal-box h3 { font-size: 1.125rem; font-weight: 600; margin: 0 0 1rem 0; }
-.modal-box .modal-body { font-size: 0.875rem; color: var(--text); white-space: pre-line; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1.25rem; }
+.modal-box .modal-body { white-space: pre-line; }

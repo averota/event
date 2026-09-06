@@ -48,7 +48,7 @@ not in the JavaScript:
   public JS, by design) could read, insert into, or wipe the table —
   with no login required — by calling the Supabase REST API directly,
   completely bypassing `login.html` and `authGuard.js`.
-- **After**: the `invitees` and `attendance` tables have RLS enabled
+- **After**: the `invitees` and `attendees` tables have RLS enabled
   with **no policy for `anon` at all**, and table grants are revoked
   from `anon`/`public` outright. All reads/writes go through
   `SECURITY DEFINER` RPC functions:
@@ -58,8 +58,12 @@ not in the JavaScript:
     register one participant.
   - `get_dashboard_stats`, `list_attendees`, `admin_list_employee_ids`,
     `admin_list_invitees`, `admin_append_invitees`,
-    `admin_overwrite_invitees` — granted **only** to `authenticated`,
-    revoked from `anon`. These back `dashboard.html`/`invitees.html`.
+    `admin_overwrite_invitees`, `admin_delete_attendee`,
+    `admin_clear_attendees`, `admin_delete_invitee`,
+    `admin_clear_invitees` — granted **only** to `authenticated`,
+    revoked from `anon`. These back `index.html`/`invitees.html`,
+    including the per-row delete buttons and the "Danger zone" clear-
+    table actions.
 - `authGuard.js` was upgraded from `getSession()` (reads whatever
   token is in local storage, unverified) to `getUser()` (round-trips
   to Supabase Auth to confirm the token is actually still valid). This

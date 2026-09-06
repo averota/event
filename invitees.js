@@ -14,9 +14,11 @@
 // anon/authenticated are revoked entirely, so this page's behaviour
 // is enforced by the database, not just by authGuard.js hiding the page.
 import { supabase as db } from './assets/supabaseClient.js';
+import { confirmDialog } from './assets/confirmDialog.js';
 
 const TABLE_NAME = 'invitees';
 
+// TODO: set this to your home page URL
 const HOME_URL = './index.html';
 
 // Schema definition: db column -> accepted header aliases (normalized)
@@ -30,8 +32,25 @@ const SCHEMA_FIELDS = {
 };
 const REQUIRED_FIELDS = ['employee_id', 'fullname'];
 
+// Human-friendly column headers for tables/exports — shown to the
+// user instead of raw database field names like "employee_id".
+const HEADER_LABELS = {
+    employee_id: 'Employee ID',
+    fullname:    'Full Name',
+    gender:      'Gender',
+    position:    'Position',
+    department:  'Department',
+    bu:          'Business Unit'
+};
+
 function normalizeHeader(h) {
     return String(h).toLowerCase().replace(/[\s_\-]/g, '');
+}
+
+function trashIconSvg() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+        '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
 }
 
 // DOM refs
@@ -47,19 +66,13 @@ const fileMeta = document.getElementById('fileMeta');
 const clearBtn = document.getElementById('clearBtn');
 const appendBtn = document.getElementById('appendBtn');
 const overwriteBtn = document.getElementById('overwriteBtn');
-
-const confirmModal = document.getElementById('confirmModal');
-const confirmTitle = document.getElementById('confirmTitle');
-const confirmBody = document.getElementById('confirmBody');
-const confirmCancel = document.getElementById('confirmCancel');
-const confirmProceed = document.getElementById('confirmProceed');
+const clearInviteesBtn = document.getElementById('clearInviteesBtn');
 
 const viewListBtn = document.getElementById('viewListBtn');
 const viewListContainer = document.getElementById('viewListContainer');
 const viewListMeta = document.getElementById('viewListMeta');
 const viewListHeader = document.getElementById('viewListHeader');
 const viewListBody = document.getElementById('viewListBody');
-const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 const downloadXlsxBtn = document.getElementById('downloadXlsxBtn');
 const closeViewListBtn = document.getElementById('closeViewListBtn');
 const logoutBtn = document.getElementById('logoutBtn');
@@ -168,7 +181,7 @@ function processRows(jsonRows) {
     currentDataset = { validRows, invalidCount, duplicateInFileCount, mappedFields, rawHeaders };
 
     renderSummary(currentDataset);
-    renderTable(allSchemaFields, validRows);
+    renderTable(tableHeader, tableBody, Object.keys(SCHEMA_FIELDS), validRows);
     tableContainer.classList.remove('hidden');
     dropzone.classList.add('compact');
 }
@@ -185,15 +198,12 @@ function renderSummary(ds) {
     `;
 }
 
-function renderTable(headers, rows) {
-    renderTableInto(tableHeader, tableBody, headers, rows, 1000, true);
-}
-
-function renderTableInto(headerEl, bodyEl, headers, rows, cap, capNote) {
-    const colCount = headers.length + 1;
+function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true, onDelete = null) {
+    const colCount = fields.length + 1 + (onDelete ? 1 : 0); // +1 for index, +1 for actions
 
     let headerHtml = '<tr><th class="idx-col">#</th>';
-    headers.forEach(header => { headerHtml += `<th>${escapeHtml(header)}</th>`; });
+    fields.forEach(field => { headerHtml += `<th>${escapeHtml(HEADER_LABELS[field] || field)}</th>`; });
+    if (onDelete) headerHtml += '<th></th>';
     headerHtml += '</tr>';
     headerEl.innerHTML = headerHtml;
 
@@ -202,21 +212,46 @@ function renderTableInto(headerEl, bodyEl, headers, rows, cap, capNote) {
         return;
     }
 
-    let bodyHtml = '';
+    bodyEl.innerHTML = '';
     rows.slice(0, cap).forEach((row, i) => {
-        bodyHtml += `<tr><td class="idx-col">${i + 1}</td>`;
-        headers.forEach(header => {
-            const cellValue = row[header] !== null && row[header] !== undefined ? row[header] : '';
-            bodyHtml += `<td>${escapeHtml(cellValue)}</td>`;
+        const tr = document.createElement('tr');
+
+        const idxTd = document.createElement('td');
+        idxTd.className = 'idx-col';
+        idxTd.textContent = i + 1;
+        tr.appendChild(idxTd);
+
+        fields.forEach(field => {
+            const td = document.createElement('td');
+            td.textContent = row[field] !== null && row[field] !== undefined ? row[field] : '';
+            tr.appendChild(td);
         });
-        bodyHtml += '</tr>';
+
+        if (onDelete) {
+            const actionTd = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn-icon-only';
+            delBtn.title = 'Delete this invitee';
+            delBtn.innerHTML = trashIconSvg();
+            delBtn.addEventListener('click', () => onDelete(row));
+            actionTd.appendChild(delBtn);
+            tr.appendChild(actionTd);
+        }
+
+        bodyEl.appendChild(tr);
     });
 
     if (capNote && rows.length > cap) {
-        bodyHtml += `<tr><td colspan="${colCount}" style="font-style:italic;color:var(--text-faint);">Preview capped at first ${cap} rows — all rows are still included in downloads/uploads.</td></tr>`;
+        const noteTr = document.createElement('tr');
+        const noteTd = document.createElement('td');
+        noteTd.colSpan = colCount;
+        noteTd.style.fontStyle = 'italic';
+        noteTd.style.color = 'var(--text-faint)';
+        noteTd.textContent = `Preview capped at first ${cap} rows — all rows are still included in downloads/uploads.`;
+        noteTr.appendChild(noteTd);
+        bodyEl.appendChild(noteTr);
     }
-
-    bodyEl.innerHTML = bodyHtml;
 }
 
 function showError(message) {
@@ -276,29 +311,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-// Confirmation modal helper
-function askConfirmation({ title, bodyText, buttonLabel, buttonClass }) {
-    return new Promise(resolve => {
-        confirmTitle.textContent = title;
-        confirmBody.textContent = bodyText;
-        confirmProceed.textContent = buttonLabel;
-        confirmProceed.className = 'btn ' + buttonClass;
-        confirmModal.classList.remove('hidden');
-
-        function cleanup(result) {
-            confirmModal.classList.add('hidden');
-            confirmProceed.removeEventListener('click', onProceed);
-            confirmCancel.removeEventListener('click', onCancel);
-            resolve(result);
-        }
-        function onProceed() { cleanup(true); }
-        function onCancel() { cleanup(false); }
-
-        confirmProceed.addEventListener('click', onProceed);
-        confirmCancel.addEventListener('click', onCancel);
-    });
-}
-
 // ---------------------------------------------------------------
 // All data access below goes through RPC functions restricted to
 // the `authenticated` role — see supabase-security.sql.
@@ -331,11 +343,10 @@ appendBtn.addEventListener('click', async () => {
             return;
         }
 
-        const confirmed = await askConfirmation({
+        const confirmed = await confirmDialog({
             title: 'Confirm append',
-            bodyText: `This will INSERT ${rowsToInsert.length} new record(s) into "${TABLE_NAME}".\n${alreadyExistCount} record(s) already exist (by employee_id) and will be skipped.\n\nExisting data in the table will not be changed or removed.\n\nProceed?`,
-            buttonLabel: `Append ${rowsToInsert.length} record(s)`,
-            buttonClass: 'btn-emerald'
+            body: `This will INSERT ${rowsToInsert.length} new record(s) into "${TABLE_NAME}". ${alreadyExistCount} record(s) already exist (by employee_id) and will be skipped. Existing data in the table will not be changed or removed.`,
+            confirmLabel: `Append ${rowsToInsert.length} record(s)`
         });
         if (!confirmed) { appendBtn.disabled = false; showStatus('Append cancelled.'); return; }
 
@@ -356,11 +367,11 @@ overwriteBtn.addEventListener('click', async () => {
 
     overwriteBtn.disabled = true;
     try {
-        const confirmed = await askConfirmation({
+        const confirmed = await confirmDialog({
             title: 'Confirm overwrite',
-            bodyText: `This will PERMANENTLY DELETE ALL existing rows in "${TABLE_NAME}" and replace them with ${currentDataset.validRows.length} record(s) from this file.\n\nThis cannot be undone. Proceed?`,
-            buttonLabel: 'Overwrite table',
-            buttonClass: 'btn-amber'
+            body: `This will PERMANENTLY DELETE ALL existing rows in "${TABLE_NAME}" and replace them with ${currentDataset.validRows.length} record(s) from this file. This cannot be undone.`,
+            confirmLabel: 'Overwrite table',
+            danger: true
         });
         if (!confirmed) { overwriteBtn.disabled = false; showStatus('Overwrite cancelled.'); return; }
 
@@ -378,6 +389,55 @@ overwriteBtn.addEventListener('click', async () => {
     }
 });
 
+clearInviteesBtn.addEventListener('click', async () => {
+    const confirmed = await confirmDialog({
+        title: 'Clear all invitees',
+        body: 'This will PERMANENTLY DELETE every invitee record. Existing registrations are not affected. This cannot be undone.',
+        confirmLabel: 'Clear all invitees',
+        danger: true
+    });
+    if (!confirmed) return;
+
+    clearInviteesBtn.disabled = true;
+    try {
+        showStatus('Clearing invitees…');
+        const { error } = await db.rpc('admin_clear_invitees');
+        if (error) throw error;
+        showStatus('<span class="num-emerald">All invitee records cleared.</span>');
+        if (currentViewList) {
+            currentViewList = [];
+            renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), [], 1000, true, handleDeleteInvitee);
+            viewListMeta.textContent = `0 record(s) in "${TABLE_NAME}"`;
+        }
+    } catch (err) {
+        showStatus(`<span class="num-rose">Clear failed: ${escapeHtml(err.message || String(err))}</span>`);
+    } finally {
+        clearInviteesBtn.disabled = false;
+    }
+});
+
+async function handleDeleteInvitee(row) {
+    const confirmed = await confirmDialog({
+        title: 'Delete invitee',
+        body: `Permanently delete the invitee record for "${row.fullname || row.employee_id}"? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true
+    });
+    if (!confirmed) return;
+
+    try {
+        const { error } = await db.rpc('admin_delete_invitee', { p_employee_id: row.employee_id });
+        if (error) throw error;
+        showStatus(`<span class="num-emerald">Deleted "${escapeHtml(row.fullname || row.employee_id)}".</span>`);
+        const rows = await fetchAllInvitees();
+        currentViewList = rows;
+        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
+        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
+    } catch (err) {
+        showStatus(`<span class="num-rose">Delete failed: ${escapeHtml(err.message || String(err))}</span>`);
+    }
+}
+
 viewListBtn.addEventListener('click', async () => {
     viewListBtn.disabled = true;
     try {
@@ -385,8 +445,7 @@ viewListBtn.addEventListener('click', async () => {
         const rows = await fetchAllInvitees();
         currentViewList = rows;
 
-        const allSchemaFields = Object.keys(SCHEMA_FIELDS);
-        renderTableInto(viewListHeader, viewListBody, allSchemaFields, rows, 1000, true);
+        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
         viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
         viewListContainer.classList.remove('hidden');
         statusContainer.classList.add('hidden');
@@ -406,15 +465,20 @@ closeViewListBtn.addEventListener('click', () => {
     currentViewList = null;
 });
 
-function downloadInviteeList(format) {
+// Excel-only export (SheetJS) — friendly headers, not raw field names.
+function downloadInviteeList() {
     if (!currentViewList || currentViewList.length === 0) return;
     const allSchemaFields = Object.keys(SCHEMA_FIELDS);
-    const worksheet = XLSX.utils.json_to_sheet(currentViewList, { header: allSchemaFields });
+    const exportRows = currentViewList.map(row => {
+        const out = {};
+        allSchemaFields.forEach(f => { out[HEADER_LABELS[f] || f] = row[f] ?? ''; });
+        return out;
+    });
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Invitees');
-    const filename = `invitees_${new Date().toISOString().slice(0, 10)}.${format}`;
-    XLSX.writeFile(workbook, filename, { bookType: format });
+    const filename = `invitees_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, filename);
 }
 
-downloadCsvBtn.addEventListener('click', () => downloadInviteeList('csv'));
-downloadXlsxBtn.addEventListener('click', () => downloadInviteeList('xlsx'));
+downloadXlsxBtn.addEventListener('click', downloadInviteeList);
