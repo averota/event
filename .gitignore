@@ -1,0 +1,16 @@
+# Real Supabase config — never commit this. Copy assets/config.example.js
+# to assets/config.js locally, or generate it in CI (see
+# .github/workflows/deploy.yml).
+assets/config.js
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+
+# Never commit any file that looks like a service-role / private key
+*service_role*
+*.pem
+.env
+.env.*

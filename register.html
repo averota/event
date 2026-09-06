@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Event Registration</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&family=Noto+Sans+Khmer:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/styles.css">
+  <link rel="stylesheet" href="./register.css">
+</head>
+<body>
+  <div class="registration-container">
+    <div class="card p-4 bg-white">
+
+      <div class="text-center mb-2">
+        <img id="app-logo" src="https://i.postimg.cc/FHRT66sP/I-Make-Impact-Logo.png" alt="Company Logo" class="img-fluid" style="max-height: 80px; object-fit: contain;">
+      </div>
+
+      <!-- Step 1: Input Employee ID -->
+      <div id="step-lookup">
+        <div class="text-center mb-2">
+          <h3 class="fw-bold text-dark fs-4">Event Registration</h3>
+          <p class="text-muted small mb-0">Please enter your Employee ID to proceed</p>
+        </div>
+        <div class="mb-2">
+          <label for="employeeId" class="form-label fw-semibold">អត្តលេខបុគ្គលិក / Employee ID <span class="req-text">*</span></label>
+          <input type="text" class="form-control" id="employeeId" placeholder="e.g. 12345" autocomplete="off" required>
+        </div>
+        <button type="button" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm" id="lookupBtn">បន្ត / Continue</button>
+      </div>
+
+      <!-- Step 2: Dynamic Forms / Verification -->
+      <div id="step-action" class="d-none mt-2">
+        <div class="text-center mb-2">
+          <h3 class="fw-bold text-dark fs-4" id="action-title">Verify Information</h3>
+          <p class="text-muted small mb-0" id="action-subtitle">Please check your details below</p>
+        </div>
+        <div id="alert-box" class="alert mb-2 text-center" role="alert"></div>
+
+        <div id="employee-card-view" class="d-none mb-2">
+          <div class="employee-card">
+            <p class="ec-name" id="ec-name"></p>
+            <p class="ec-position" id="ec-position"></p>
+            <hr class="ec-rule">
+            <dl class="ec-details">
+              <div class="ec-field">
+                <dt>អត្តលេខ / Employee ID</dt>
+                <dd id="ec-id"></dd>
+              </div>
+              <div class="ec-field">
+                <dt>ភេទ / Gender</dt>
+                <dd id="ec-gender"></dd>
+              </div>
+              <div class="ec-field">
+                <dt>ផ្នែក / Department</dt>
+                <dd id="ec-department"></dd>
+              </div>
+              <div class="ec-field">
+                <dt>បុត្រសម្ព័ន្ធ / Business Unit</dt>
+                <dd id="ec-bu"></dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        <form id="regForm">
+          <input type="hidden" id="form-type" name="type">
+
+          <div id="id-field-wrapper" class="mb-2">
+            <label class="form-label fw-semibold text-secondary small">អត្តលេខបុគ្គលិក / Employee ID <span class="req-text">*</span></label>
+            <input type="text" class="form-control bg-light" id="display-id" name="employeeId" readonly>
+          </div>
+
+          <div id="name-field-wrapper" class="mb-2">
+            <label class="form-label fw-semibold text-secondary small">ឈ្មោះពេញ / Full Name <span class="req-text">*</span></label>
+            <input type="text" class="form-control" id="display-name" name="fullname" required>
+          </div>
+
+          <input type="hidden" id="display-gender" name="gender">
+          <input type="hidden" id="display-position" name="position">
+          <input type="hidden" id="display-department" name="department">
+          <input type="hidden" id="display-bu" name="businessUnit">
+
+          <div id="walkin-extra-fields" class="d-none">
+            <div class="mb-2">
+              <label class="form-label fw-semibold text-secondary small">ភេទ / Gender</label>
+              <select class="form-select" id="walkin-gender-select">
+                <option value="">-- ជ្រើសរើស / Select --</option>
+                <option value="Male">ប្រុស / Male</option>
+                <option value="Female">ស្រី / Female</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold text-secondary small">តួនាទី / Position</label>
+              <input type="text" class="form-control" id="walkin-position" placeholder="e.g. Sales Executive">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold text-secondary small">ផ្នែក / Department</label>
+              <input type="text" class="form-control" id="walkin-department" placeholder="e.g. Marketing">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-semibold text-secondary small">បុត្រសម្ព័ន្ធ / Business Unit</label>
+              <input type="text" class="form-control" id="walkin-bu" placeholder="e.g. Sokha Beach Resort">
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn btn-success w-100 py-2 fw-semibold shadow-sm mb-2">ចុះឈ្មោះ / Register</button>
+        </form>
+        <button type="button" class="btn btn-outline-secondary w-100 py-2 fw-semibold" id="backBtn">ត្រលប់ / Back</button>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div id="step-success" class="d-none text-center py-3">
+        <div class="success-icon-container shadow-sm">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-2 fs-4">Registration Successful!</h3>
+        <p class="text-muted mb-3 small" id="success-message">Your registration has been successfully recorded.</p>
+        <button type="button" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm" id="okBtn">OK</button>
+      </div>
+
+      <div id="loading" class="text-center d-none my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="text-muted small mt-2">Processing...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config must load before any module that imports supabaseClient.js -->
+  <script src="./assets/config.js"></script>
+  <script type="module" src="./register.js"></script>
+</body>
+</html>

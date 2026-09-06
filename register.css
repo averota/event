@@ -1,0 +1,57 @@
+/* register.html-only rules. Shared design tokens/components live in
+   assets/styles.css — this file only has the kiosk-specific layout
+   and the Khmer/English font override. */
+
+body,
+.form-control, .btn, .alert, label, span, input, textarea, select, button,
+h1, h2, h3, h4, h5, h6, p, dl, dt, dd {
+  font-family: 'Kantumruy Pro', sans-serif !important;
+}
+
+html, body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 1rem;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Only the Verify/Walk-in step can grow tall enough to need this —
+   everything else stays vertically centered. */
+body.align-top {
+  align-items: flex-start;
+  padding: 2rem 1rem;
+}
+
+.registration-container {
+  width: 100%;
+  max-width: 550px;
+  display: flex;
+  flex-direction: column;
+}
+
+input { font-size: 16px; }
+
+/* Card sizes to its content; the page itself scrolls if a viewport
+   is too short. */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.form-control, .form-select, .btn {
+  min-height: 46px;
+  font-size: 1rem;
+}
+
+@media (max-width: 576px) and (pointer: coarse) {
+  html, body { padding: 0.5rem; }
+  body.align-top { padding: 1rem 0.5rem; }
+  .registration-container { max-width: 100%; }
+  .card { border-radius: 8px; padding: 1.25rem !important; }
+}

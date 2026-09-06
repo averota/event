@@ -1,0 +1,42 @@
+# Example deploy workflow for GitHub Pages.
+#
+# It generates assets/config.js from GitHub Secrets at deploy time,
+# so the real Supabase URL/key are stored in
+#   Repo → Settings → Secrets and variables → Actions
+# instead of ever being committed to git history.
+#
+# Add secrets: SUPABASE_URL, SUPABASE_ANON_KEY
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate assets/config.js from secrets
+        run: |
+          cat > assets/config.js <<EOF
+          window.__SUPABASE_CONFIG__ = {
+            url: "${{ secrets.SUPABASE_URL }}",
+            anonKey: "${{ secrets.SUPABASE_ANON_KEY }}"
+          };
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
