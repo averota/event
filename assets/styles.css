@@ -213,6 +213,7 @@ a { color: var(--accent); }
 
 .stat-invited::before    { background: var(--accent); }
 .stat-registered::before { background: var(--success); }
+.stat-female::before { background: var(--success); }
 .stat-pending::before    { background: var(--danger); }
 .stat-walkin::before     { background: var(--warning); }
 
