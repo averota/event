@@ -20,6 +20,7 @@
 
   --success: #0F9D63;
   --success-bg: #E8F8F1;
+  --pink: #9b0055;
   --warning: #E08A2C;
   --warning-bg: #FDF3E7;
   --danger: #E0483E;
@@ -213,7 +214,7 @@ a { color: var(--accent); }
 
 .stat-invited::before    { background: var(--accent); }
 .stat-registered::before { background: var(--success); }
-.stat-female::before { background: var(--success); }
+.stat-female::before { background: var(--pink); }
 .stat-pending::before    { background: var(--danger); }
 .stat-walkin::before     { background: var(--warning); }
 
