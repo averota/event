@@ -132,6 +132,7 @@ function editRowDialog(row) {
 
 // DOM refs
 const toggleUploadBtn = document.getElementById('toggleUploadBtn');
+const backToListBtn = document.getElementById('backToListBtn');
 const uploadPanel = document.getElementById('uploadPanel');
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -185,6 +186,12 @@ function setUploadPanelOpen(open) {
 
 toggleUploadBtn.addEventListener('click', () => {
     setUploadPanelOpen(uploadPanel.classList.contains('hidden'));
+});
+
+// Lets the user leave the upload panel without uploading anything,
+// returning to the list view (and discarding any in-progress preview).
+backToListBtn.addEventListener('click', () => {
+    setUploadPanelOpen(false);
 });
 
 // File input handling
@@ -317,7 +324,15 @@ async function handleEditPreviewRow(row, index) {
     renderPreviewTable();
 }
 
-function handleDeletePreviewRow(row, index) {
+async function handleDeletePreviewRow(row, index) {
+    const confirmed = await confirmDialog({
+        title: 'Delete row',
+        body: `Remove "${row.fullname || row.employee_id}" from this preview? It won't be uploaded. This only affects the preview — nothing has been saved yet.`,
+        confirmLabel: 'Delete',
+        danger: true
+    });
+    if (!confirmed) return;
+
     currentDataset.validRows.splice(index, 1);
     renderSummary(currentDataset);
     renderPreviewTable();
@@ -350,7 +365,7 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
     let headerHtml = '<tr><th class="idx-col">#</th>';
     fields.forEach(field => { headerHtml += `<th>${escapeHtml(HEADER_LABELS[field] || field)}</th>`; });
     if (hasActions) {
-        headerHtml += `<th class="actions-col">${actions.onEdit ? 'Actions' : 'Delete'}</th>`;
+        headerHtml += `<th class="actions-col">Action</th>`;
     }
     headerHtml += '</tr>';
     headerEl.innerHTML = headerHtml;
@@ -485,7 +500,7 @@ async function refreshInviteeList() {
     try {
         const rows = await fetchAllInvitees();
         currentViewList = rows;
-        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, { onDelete: handleDeleteInvitee });
+        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, { onEdit: handleEditInvitee, onDelete: handleDeleteInvitee });
         viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
     } catch (err) {
         showError(`Failed to load invitee list: ${err.message}`);
@@ -587,6 +602,28 @@ clearInviteesBtn.addEventListener('click', async () => {
         clearInviteesBtn.disabled = false;
     }
 });
+
+async function handleEditInvitee(row) {
+    const updated = await editRowDialog(row);
+    if (!updated) return;
+
+    try {
+        const { error } = await db.rpc('admin_update_invitee', {
+            p_original_employee_id: row.employee_id,
+            p_employee_id: updated.employee_id,
+            p_fullname: updated.fullname,
+            p_gender: updated.gender,
+            p_position: updated.position,
+            p_department: updated.department,
+            p_bu: updated.bu
+        });
+        if (error) throw error;
+        await refreshInviteeList();
+        showStatus(`<span class="num-emerald">Updated "${escapeHtml(updated.fullname || updated.employee_id)}".</span>`);
+    } catch (err) {
+        showStatus(`<span class="num-rose">Update failed: ${escapeHtml(err.message || String(err))}</span>`);
+    }
+}
 
 async function handleDeleteInvitee(row) {
     const confirmed = await confirmDialog({

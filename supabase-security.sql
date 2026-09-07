@@ -235,6 +235,43 @@ begin
 end;
 $$;
 
+-- Update a single invitee's fields, identified by their original
+-- employee_id — used by the per-row edit button in the "View invitee
+-- list" table. p_original_employee_id finds the row; p_employee_id is
+-- the (possibly changed) new value to save, allowing the ID itself to
+-- be corrected. If p_employee_id collides with another existing row,
+-- this fails with a uniqueness violation, which the app surfaces as
+-- an "Update failed" message rather than silently overwriting data.
+create or replace function public.admin_update_invitee(
+  p_original_employee_id text,
+  p_employee_id text,
+  p_fullname text,
+  p_gender text,
+  p_position text,
+  p_department text,
+  p_bu text
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_count integer;
+begin
+  update public.invitees
+  set employee_id = p_employee_id,
+      fullname = p_fullname,
+      gender = p_gender,
+      position = p_position,
+      department = p_department,
+      bu = p_bu
+  where employee_id = p_original_employee_id;
+  get diagnostics updated_count = row_count;
+  return updated_count;
+end;
+$$;
+
 -- Wipe every invitee row — used by the "Clear all invitees" button
 -- to start a fresh invite list without touching existing registrations.
 create or replace function public.admin_clear_invitees()
@@ -257,6 +294,7 @@ revoke execute on function public.admin_list_invitees()          from public, an
 revoke execute on function public.admin_append_invitees(jsonb)   from public, anon;
 revoke execute on function public.admin_overwrite_invitees(jsonb) from public, anon;
 revoke execute on function public.admin_delete_invitee(text)     from public, anon;
+revoke execute on function public.admin_update_invitee(text, text, text, text, text, text, text) from public, anon;
 revoke execute on function public.admin_clear_invitees()         from public, anon;
 
 grant execute on function public.admin_list_employee_ids()       to authenticated;
@@ -264,7 +302,9 @@ grant execute on function public.admin_list_invitees()           to authenticate
 grant execute on function public.admin_append_invitees(jsonb)    to authenticated;
 grant execute on function public.admin_overwrite_invitees(jsonb) to authenticated;
 grant execute on function public.admin_delete_invitee(text)      to authenticated;
+grant execute on function public.admin_update_invitee(text, text, text, text, text, text, text) to authenticated;
 grant execute on function public.admin_clear_invitees()          to authenticated;
+
 
 
 -- ------------------------------------------------------------
