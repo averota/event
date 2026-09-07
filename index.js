@@ -23,6 +23,17 @@ function formatPhnomPenhTime(inputStr) {
   return `${map.day}-${map.month}-${map.year} ${map.hour}:${map.minute}`;
 }
 
+// Normalizes free-text gender values into 'male' | 'female' | null.
+// Handles both full words and single-letter abbreviations (e.g. data
+// uploaded from a spreadsheet that used "F"/"M" instead of spelling
+// it out), so counts don't silently undercount mismatched formats.
+function normalizeGender(value) {
+  const v = String(value || '').trim().toLowerCase();
+  if (v === 'female' || v === 'f') return 'female';
+  if (v === 'male' || v === 'm') return 'male';
+  return null;
+}
+
 function trashIconSvg() {
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
@@ -127,7 +138,7 @@ async function getData() {
     // Computed client-side from the attendee list rather than added to
     // get_dashboard_stats() — avoids a database change for a value we
     // already have on hand from list_attendees().
-    const femaleCount = data.filter(r => String(r.gender || '').trim().toLowerCase() === 'female').length;
+    const femaleCount = data.filter(r => normalizeGender(r.gender) === 'female').length;
     document.getElementById('statFemale').textContent = femaleCount;
 
     renderRows(data);

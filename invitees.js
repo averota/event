@@ -44,6 +44,17 @@ function normalizeHeader(h) {
     return String(h).toLowerCase().replace(/[\s_\-]/g, '');
 }
 
+// Normalizes free-text gender values into 'male' | 'female' | null.
+// Handles both full words and single-letter abbreviations (e.g. data
+// uploaded from a spreadsheet that used "F"/"M" instead of spelling
+// it out), so counts don't silently undercount mismatched formats.
+function normalizeGender(value) {
+    const v = String(value || '').trim().toLowerCase();
+    if (v === 'female' || v === 'f') return 'female';
+    if (v === 'male' || v === 'm') return 'male';
+    return null;
+}
+
 function trashIconSvg() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
@@ -501,8 +512,8 @@ async function refreshInviteeList() {
         const rows = await fetchAllInvitees();
         currentViewList = rows;
         renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, { onEdit: handleEditInvitee, onDelete: handleDeleteInvitee });
-        const maleCount = rows.filter(r => String(r.gender || '').trim().toLowerCase() === 'male').length;
-        const femaleCount = rows.filter(r => String(r.gender || '').trim().toLowerCase() === 'female').length;
+        const maleCount = rows.filter(r => normalizeGender(r.gender) === 'male').length;
+        const femaleCount = rows.filter(r => normalizeGender(r.gender) === 'female').length;
         viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}" — ${maleCount} male, ${femaleCount} female`;
     } catch (err) {
         showError(`Failed to load invitee list: ${err.message}`);
