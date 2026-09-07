@@ -50,6 +50,86 @@ function trashIconSvg() {
         '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
 }
 
+function editIconSvg() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>' +
+        '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+}
+
+// A small edit-form modal for correcting a preview row before it's
+// committed to Supabase. Built on the same .modal-overlay/.modal-box
+// styles as confirmDialog.js, but with actual input fields. Resolves
+// to the edited row object, or null if cancelled.
+function editRowDialog(row) {
+    return new Promise((resolve) => {
+        const fields = Object.keys(SCHEMA_FIELDS);
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-box">
+                <h3>Edit invitee</h3>
+                <div class="edit-form"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" data-action="cancel">Cancel</button>
+                    <button type="button" class="btn btn-brand" data-action="save">Save</button>
+                </div>
+            </div>
+        `;
+
+        const form = overlay.querySelector('.edit-form');
+        const inputs = {};
+        fields.forEach(field => {
+            const wrap = document.createElement('div');
+            wrap.className = 'mb-2';
+
+            const label = document.createElement('label');
+            label.className = 'form-label small fw-semibold mb-1';
+            label.textContent = HEADER_LABELS[field] || field;
+            if (REQUIRED_FIELDS.includes(field)) {
+                const req = document.createElement('span');
+                req.className = 'req-text';
+                req.textContent = ' *';
+                label.appendChild(req);
+            }
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm';
+            input.value = row[field] ?? '';
+
+            wrap.appendChild(label);
+            wrap.appendChild(input);
+            form.appendChild(wrap);
+            inputs[field] = input;
+        });
+
+        document.body.appendChild(overlay);
+        inputs[fields[0]].focus();
+
+        function cleanup(result) {
+            overlay.remove();
+            resolve(result);
+        }
+
+        overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => cleanup(null));
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(null); });
+
+        overlay.querySelector('[data-action="save"]').addEventListener('click', () => {
+            const updated = {};
+            fields.forEach(f => {
+                const val = inputs[f].value.trim();
+                updated[f] = val === '' ? null : val;
+            });
+            const missing = REQUIRED_FIELDS.filter(f => !updated[f]);
+            if (missing.length > 0) {
+                alert(`${missing.map(f => HEADER_LABELS[f] || f).join(', ')} ${missing.length > 1 ? 'are' : 'is'} required.`);
+                return;
+            }
+            cleanup(updated);
+        });
+    });
+}
+
 // DOM refs
 const toggleUploadBtn = document.getElementById('toggleUploadBtn');
 const uploadPanel = document.getElementById('uploadPanel');
@@ -69,12 +149,12 @@ const clearInviteesBtn = document.getElementById('clearInviteesBtn');
 
 const refreshListBtn = document.getElementById('refreshListBtn');
 const viewListContainer = document.getElementById('viewListContainer');
+const dangerZone = document.getElementById('dangerZone');
 const viewListMeta = document.getElementById('viewListMeta');
 const viewListHeader = document.getElementById('viewListHeader');
 const viewListBody = document.getElementById('viewListBody');
 const downloadXlsxBtn = document.getElementById('downloadXlsxBtn');
 const logoutBtn = document.getElementById('logoutBtn');
-const dangerZone = document.getElementById('dangerZone');
 
 let currentViewList = [];
 let currentDataset = null;
@@ -203,9 +283,44 @@ function processRows(jsonRows) {
     currentDataset = { validRows, invalidCount, duplicateInFileCount, mappedFields, rawHeaders };
 
     renderSummary(currentDataset);
-    renderTable(tableHeader, tableBody, Object.keys(SCHEMA_FIELDS), validRows);
+    renderPreviewTable();
     tableContainer.classList.remove('hidden');
     dropzone.classList.add('compact');
+}
+
+// Re-renders the upload preview table from the current in-memory
+// currentDataset.validRows — called on initial parse, and again after
+// every edit/delete so the row indices stay in sync.
+function renderPreviewTable() {
+    renderTable(
+        tableHeader, tableBody, Object.keys(SCHEMA_FIELDS), currentDataset.validRows,
+        1000, true,
+        { onEdit: handleEditPreviewRow, onDelete: handleDeletePreviewRow }
+    );
+}
+
+async function handleEditPreviewRow(row, index) {
+    const updated = await editRowDialog(row);
+    if (!updated) return;
+
+    // Prevent two rows in the same preview ending up with the same
+    // employee_id after an edit — that's exactly the validation the
+    // initial file parse already applied.
+    const isDuplicate = currentDataset.validRows.some((r, i) => i !== index && r.employee_id === updated.employee_id);
+    if (isDuplicate) {
+        alert(`Employee ID "${updated.employee_id}" is already used by another row in this preview. Please use a unique ID.`);
+        return;
+    }
+
+    currentDataset.validRows[index] = updated;
+    renderSummary(currentDataset);
+    renderPreviewTable();
+}
+
+function handleDeletePreviewRow(row, index) {
+    currentDataset.validRows.splice(index, 1);
+    renderSummary(currentDataset);
+    renderPreviewTable();
 }
 
 // Rendering
@@ -224,12 +339,19 @@ function renderSummary(ds) {
 // refresh never shows a visibly empty table mid-update. Pass
 // onDelete to add a trash-icon actions column (used for the live
 // invitee list, not for the not-yet-saved upload preview).
-function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true, onDelete = null) {
-    const colCount = fields.length + 1 + (onDelete ? 1 : 0); // +1 for index, +1 for actions
+// `actions` is { onEdit, onDelete } — either can be omitted. The
+// invitee list only passes onDelete (header reads "Delete"); the
+// upload preview passes both (header reads "Actions"), since rows
+// there aren't saved yet and can still be corrected.
+function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true, actions = null) {
+    const hasActions = !!(actions && (actions.onEdit || actions.onDelete));
+    const colCount = fields.length + 1 + (hasActions ? 1 : 0); // +1 for index, +1 for actions
 
     let headerHtml = '<tr><th class="idx-col">#</th>';
     fields.forEach(field => { headerHtml += `<th>${escapeHtml(HEADER_LABELS[field] || field)}</th>`; });
-    if (onDelete) headerHtml += `<th class="actions-col">Delete</th>`;
+    if (hasActions) {
+        headerHtml += `<th class="actions-col">${actions.onEdit ? 'Actions' : 'Delete'}</th>`;
+    }
     headerHtml += '</tr>';
     headerEl.innerHTML = headerHtml;
 
@@ -253,16 +375,34 @@ function renderTable(headerEl, bodyEl, fields, rows, cap = 1000, capNote = true,
             tr.appendChild(td);
         });
 
-        if (onDelete) {
+        if (hasActions) {
             const actionTd = document.createElement('td');
             actionTd.className = 'actions-col';
-            const delBtn = document.createElement('button');
-            delBtn.type = 'button';
-            delBtn.className = 'btn-icon-only';
-            delBtn.title = 'Delete this invitee';
-            delBtn.innerHTML = trashIconSvg();
-            delBtn.addEventListener('click', () => onDelete(row));
-            actionTd.appendChild(delBtn);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'actions-wrap';
+
+            if (actions.onEdit) {
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'btn-icon-only';
+                editBtn.title = 'Edit this row';
+                editBtn.innerHTML = editIconSvg();
+                editBtn.addEventListener('click', () => actions.onEdit(row, i));
+                wrap.appendChild(editBtn);
+            }
+
+            if (actions.onDelete) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'btn-icon-only';
+                delBtn.title = 'Delete this row';
+                delBtn.innerHTML = trashIconSvg();
+                delBtn.addEventListener('click', () => actions.onDelete(row, i));
+                wrap.appendChild(delBtn);
+            }
+
+            actionTd.appendChild(wrap);
             tr.appendChild(actionTd);
         }
 
@@ -345,7 +485,7 @@ async function refreshInviteeList() {
     try {
         const rows = await fetchAllInvitees();
         currentViewList = rows;
-        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, handleDeleteInvitee);
+        renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, { onDelete: handleDeleteInvitee });
         viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
     } catch (err) {
         showError(`Failed to load invitee list: ${err.message}`);
