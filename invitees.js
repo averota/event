@@ -501,7 +501,9 @@ async function refreshInviteeList() {
         const rows = await fetchAllInvitees();
         currentViewList = rows;
         renderTable(viewListHeader, viewListBody, Object.keys(SCHEMA_FIELDS), rows, 1000, true, { onEdit: handleEditInvitee, onDelete: handleDeleteInvitee });
-        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}"`;
+        const maleCount = rows.filter(r => String(r.gender || '').trim().toLowerCase() === 'male').length;
+        const femaleCount = rows.filter(r => String(r.gender || '').trim().toLowerCase() === 'female').length;
+        viewListMeta.textContent = `${rows.length} record(s) in "${TABLE_NAME}" — ${maleCount} male, ${femaleCount} female`;
     } catch (err) {
         showError(`Failed to load invitee list: ${err.message}`);
     }

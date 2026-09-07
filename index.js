@@ -124,6 +124,12 @@ async function getData() {
     const data = listRes.data || [];
     localRows = data;
 
+    // Computed client-side from the attendee list rather than added to
+    // get_dashboard_stats() — avoids a database change for a value we
+    // already have on hand from list_attendees().
+    const femaleCount = data.filter(r => String(r.gender || '').trim().toLowerCase() === 'female').length;
+    document.getElementById('statFemale').textContent = femaleCount;
+
     renderRows(data);
     setLog(data.length === 0 ? 'Connected! No registrations yet.' : `Loaded ${data.length} registrations.`);
 
@@ -212,7 +218,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 //
 // Requires `alter publication supabase_realtime add table
 // public.attendees;` to have been run once (see
-// supabase-security.sql, section 5). Realtime enforces the same RLS
+// supabase-security.sql, section 6). Realtime enforces the same RLS
 // policies as regular queries — only a logged-in `authenticated`
 // user (which is who's ever viewing this page, thanks to
 // authGuard.js) can receive these events, so this doesn't open up

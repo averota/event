@@ -308,7 +308,54 @@ grant execute on function public.admin_clear_invitees()          to authenticate
 
 
 -- ------------------------------------------------------------
--- 5. Live dashboard updates (Realtime).
+-- 5. Audit tracking: who changed an invitee record, and when.
+--
+--    Adds two columns to public.invitees and a trigger that stamps
+--    them automatically on every INSERT/UPDATE — including from
+--    admin_append_invitees, admin_overwrite_invitees, and
+--    admin_update_invitee above, and from any direct SQL edit an
+--    admin makes in the Supabase dashboard, since it's a table-level
+--    trigger rather than logic duplicated inside each RPC.
+--
+--    Database-only change: no HTML/JS reads or displays these columns.
+-- ------------------------------------------------------------
+alter table public.invitees
+  add column if not exists last_modified timestamp without time zone,
+  add column if not exists modified_by text;
+
+-- last_modified is stored as a plain (timezone-naive) timestamp
+-- already shifted to Phnom Penh's wall-clock time (UTC+7, no DST),
+-- via `now() AT TIME ZONE 'Asia/Phnom_Penh'`. Unlike a `timestamptz`
+-- column, this value won't silently re-render in a different zone
+-- depending on who/what queries it later — it always reads as Phnom
+-- Penh local time, matching how the app already displays timestamps
+-- elsewhere (see formatPhnomPenhTime() in index.js).
+--
+-- modified_by prefers the caller's email from their JWT (readable at
+-- a glance in the dashboard), falling back to their user id, or
+-- 'unknown' for the rare case for a write with no identifiable
+-- session (auth.jwt() and auth.uid() aren't affected by these
+-- functions being SECURITY DEFINER — they reflect the actual calling
+-- user's session, not the function owner).
+create or replace function public.set_invitees_audit_fields()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.last_modified := (now() AT TIME ZONE 'Asia/Phnom_Penh');
+  new.modified_by := coalesce(auth.jwt() ->> 'email', auth.uid()::text, 'unknown');
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_invitees_audit on public.invitees;
+create trigger trg_invitees_audit
+before insert or update on public.invitees
+for each row
+execute function public.set_invitees_audit_fields();
+
+-- ------------------------------------------------------------
+-- 6. Live dashboard updates (Realtime).
 --    This lets index.html subscribe to new rows and refresh
 --    automatically instead of requiring a manual "Refresh" click.
 --    Realtime enforces the SAME RLS policies as normal queries, so
@@ -332,7 +379,7 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
--- 6. Auth hardening (do this in the Dashboard, not SQL):
+-- 7. Auth hardening (do this in the Dashboard, not SQL):
 --    Authentication → Providers → Email:
 --      - Turn OFF "Allow new users to sign up" — accounts for
 --        index.html/invitees.html should only be created by an
