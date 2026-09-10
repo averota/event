@@ -11,6 +11,18 @@
   <link rel="stylesheet" href="./register.css">
 </head>
 <body>
+
+  <div class="app-navbar">
+    <div class="brand"><span class="dot"></span>Event Portal</div>
+    <nav>
+      <a href="./login.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Admin Login
+      </a>
+    </nav>
+  </div>
+
+  <div class="center-shell">
   <div class="registration-container">
     <div class="card p-4 bg-white">
 
@@ -113,7 +125,7 @@
 
       <!-- Shown instead of everything else when registration is closed -->
       <div id="step-closed" class="d-none text-center py-3">
-        <div class="closed-icon-container">
+        <div class="closed-icon-container shadow-sm">
           <i class="fa-solid fa-lock"></i>
         </div>
         <h3 class="fw-bold text-dark mb-2 fs-4">Registration Closed</h3>
@@ -136,6 +148,7 @@
         <div class="text-muted small mt-2">Processing...</div>
       </div>
     </div>
+  </div>
   </div>
 
   <!-- Config must load before any module that imports supabaseClient.js -->

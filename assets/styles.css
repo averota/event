@@ -20,7 +20,6 @@
 
   --success: #0F9D63;
   --success-bg: #E8F8F1;
-  --pink: #9b0055;
   --warning: #E08A2C;
   --warning-bg: #FDF3E7;
   --danger: #E0483E;
@@ -96,7 +95,11 @@ a { color: var(--accent); }
   padding: 7px 12px;
   border-radius: var(--radius-sm);
   transition: background .12s ease, color .12s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
+.app-navbar nav a svg { width: 14px; height: 14px; flex-shrink: 0; }
 .app-navbar nav a:hover { background: var(--ghost-bg); color: var(--text); }
 .app-navbar nav a.active { background: var(--accent-soft); color: var(--accent); }
 .app-navbar .navbar-actions { display: flex; align-items: center; gap: 8px; }
@@ -214,7 +217,7 @@ a { color: var(--accent); }
 
 .stat-invited::before    { background: var(--accent); }
 .stat-registered::before { background: var(--success); }
-.stat-female::before { background: var(--pink); }
+.stat-female::before     { background: #DB2777; }
 .stat-pending::before    { background: var(--danger); }
 .stat-walkin::before     { background: var(--warning); }
 
@@ -283,6 +286,11 @@ a { color: var(--accent); }
   width: 1%;
   white-space: nowrap;
 }
+.actions-wrap {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
 
 /* ---------- Employee verification card (register flow) ---------- */
 .employee-card {
@@ -302,6 +310,16 @@ a { color: var(--accent); }
   width: 64px; height: 64px;
   background-color: var(--accent-soft);
   color: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem auto;
+}
+
+.closed-icon-container {
+  width: 64px; height: 64px;
+  background-color: var(--ghost-bg);
+  color: var(--ghost);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 2rem;

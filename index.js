@@ -261,7 +261,8 @@ const registrationStatusNote = document.getElementById('registrationStatusNote')
 
 function setToggleUIState(isOpen) {
   registrationToggle.checked = isOpen;
-  registrationStatusNote.textContent = isOpen
+  registrationStatusNote.textContent = isOpen ? 'Open' : 'Closed';
+  registrationStatusNote.title = isOpen
     ? 'Registrations are currently open.'
     : 'Registrations are currently closed — the registration page will show a closed notice.';
 }
@@ -273,14 +274,15 @@ async function loadRegistrationStatus() {
     setToggleUIState(!!data);
     registrationToggle.disabled = false;
   } catch (err) {
-    registrationStatusNote.textContent = 'Could not load registration status: ' + err.message;
+    registrationStatusNote.textContent = 'Error';
+    registrationStatusNote.title = 'Could not load registration status: ' + err.message;
   }
 }
 
 registrationToggle.addEventListener('change', async () => {
   const desiredState = registrationToggle.checked;
   registrationToggle.disabled = true;
-  registrationStatusNote.textContent = 'Updating…';
+  registrationStatusNote.textContent = '…';
 
   try {
     const { error } = await supabase.rpc('set_registration_status', { p_open: desiredState });

@@ -9,20 +9,35 @@ h1, h2, h3, h4, h5, h6, p, dl, dt, dd {
 }
 
 html, body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100%;
   width: 100%;
   margin: 0;
-  padding: 1rem;
+  padding: 0;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
 }
 
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fills the space below the nav bar and centers the registration
+   card within it — the nav itself stays at its natural height at
+   the top instead of being centered along with the card. */
+.center-shell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  width: 100%;
+}
+
 /* Only the Verify/Walk-in step can grow tall enough to need this —
    everything else stays vertically centered. */
-body.align-top {
+body.align-top .center-shell {
   align-items: flex-start;
   padding: 2rem 1rem;
 }
@@ -50,8 +65,8 @@ input { font-size: 16px; }
 }
 
 @media (max-width: 576px) and (pointer: coarse) {
-  html, body { padding: 0.5rem; }
-  body.align-top { padding: 1rem 0.5rem; }
+  .center-shell { padding: 0.5rem; }
+  body.align-top .center-shell { padding: 1rem 0.5rem; }
   .registration-container { max-width: 100%; }
   .card { border-radius: 8px; padding: 1.25rem !important; }
 }
