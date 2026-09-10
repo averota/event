@@ -229,7 +229,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 //
 // Requires `alter publication supabase_realtime add table
 // public.attendees;` to have been run once (see
-// supabase-security.sql, section 6). Realtime enforces the same RLS
+// supabase-security.sql, section 7). Realtime enforces the same RLS
 // policies as regular queries — only a logged-in `authenticated`
 // user (which is who's ever viewing this page, thanks to
 // authGuard.js) can receive these events, so this doesn't open up
@@ -247,5 +247,54 @@ supabase
     }
   )
   .subscribe();
+
+// ------------------------------------------------------------
+// Registration open/closed switch. Reads/writes app_settings via
+// two RPCs (see supabase-security.sql, section 6). The actual gate
+// that stops registrations also needs to live inside the
+// register_participant(...) database function itself (see the
+// comment in that SQL section) — this toggle is the control surface,
+// not the only enforcement point.
+// ------------------------------------------------------------
+const registrationToggle = document.getElementById('registrationToggle');
+const registrationStatusNote = document.getElementById('registrationStatusNote');
+
+function setToggleUIState(isOpen) {
+  registrationToggle.checked = isOpen;
+  registrationStatusNote.textContent = isOpen
+    ? 'Registrations are currently open.'
+    : 'Registrations are currently closed — the registration page will show a closed notice.';
+}
+
+async function loadRegistrationStatus() {
+  try {
+    const { data, error } = await supabase.rpc('get_registration_status');
+    if (error) throw error;
+    setToggleUIState(!!data);
+    registrationToggle.disabled = false;
+  } catch (err) {
+    registrationStatusNote.textContent = 'Could not load registration status: ' + err.message;
+  }
+}
+
+registrationToggle.addEventListener('change', async () => {
+  const desiredState = registrationToggle.checked;
+  registrationToggle.disabled = true;
+  registrationStatusNote.textContent = 'Updating…';
+
+  try {
+    const { error } = await supabase.rpc('set_registration_status', { p_open: desiredState });
+    if (error) throw error;
+    setToggleUIState(desiredState);
+  } catch (err) {
+    // Revert the switch visually since the change didn't actually save.
+    setToggleUIState(!desiredState);
+    alert('Failed to update registration status: ' + err.message);
+  } finally {
+    registrationToggle.disabled = false;
+  }
+});
+
+loadRegistrationStatus();
 
 window.addEventListener('DOMContentLoaded', getData);

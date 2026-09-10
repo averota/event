@@ -8,6 +8,47 @@
 // while index.html/invitees.html require a logged-in session.
 import { supabase } from './assets/supabaseClient.js';
 
+// ------------------------------------------------------------
+// Registration open/closed check. Runs before anything else on the
+// page so a closed event shows the notice immediately, without a
+// flash of the normal form first. This calls a third RPC beyond the
+// two mentioned above — get_registration_status() — which is
+// intentionally read-only and safe for anon (see
+// supabase-security.sql, section 6).
+//
+// This is a UX convenience, not the real enforcement: the actual
+// register_participant(...) function should also check
+// app_settings.registration_open server-side (see the comment next
+// to that RPC's grants in supabase-security.sql), so someone can't
+// bypass a closed registration by calling the API directly while
+// this page happens to still be open in their browser.
+// ------------------------------------------------------------
+document.getElementById('loading').classList.remove('d-none');
+document.getElementById('app-logo').classList.add('d-none');
+document.getElementById('step-lookup').classList.add('d-none');
+
+(async function checkRegistrationOpen() {
+  try {
+    const { data, error } = await supabase.rpc('get_registration_status');
+    if (error) throw error;
+
+    document.getElementById('loading').classList.add('d-none');
+    if (data === false) {
+      document.getElementById('step-closed').classList.remove('d-none');
+    } else {
+      document.getElementById('app-logo').classList.remove('d-none');
+      document.getElementById('step-lookup').classList.remove('d-none');
+    }
+  } catch (err) {
+    // Fail open: if the status check itself fails (e.g. a transient
+    // network issue), don't block registration entirely — show the
+    // normal form rather than leaving the page stuck on a spinner.
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('app-logo').classList.remove('d-none');
+    document.getElementById('step-lookup').classList.remove('d-none');
+  }
+})();
+
 async function callBackend(action, payload) {
   if (action === 'checkEmployee') {
     const { data, error } = await supabase.rpc('check_employee', {

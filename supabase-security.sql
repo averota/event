@@ -58,10 +58,21 @@ create policy "authenticated_full_access_attendees"
 --    do their job under a fixed, narrow set of operations regardless
 --    of the caller's own row-level permissions, but each one must
 --    validate/limit what it does internally. Grant to anon explicitly.
+--
+--    check_employee is left as-is below (a stub/reference only) since
+--    it doesn't need any change for the registration switch — only
+--    register_participant does. Keep your existing check_employee
+--    function untouched; do not run a create-or-replace for it from
+--    this file.
+--
+--    register_participant below IS your real function (as provided),
+--    with exactly one addition: the registration_open guard marked
+--    "THE REGISTRATION-SWITCH GUARD" near the top. Nothing else in
+--    the logic was changed — same insert, same unique_violation
+--    handling, same column list.
 -- ------------------------------------------------------------
--- Example shape — replace the body with your existing implementation,
--- just make sure `security definer` + `set search_path = public` and
--- the grants below stay in place.
+-- Reference only — do NOT run this create-or-replace. Your existing
+-- check_employee function is unchanged and untouched by this file.
 --
 -- create or replace function public.check_employee(p_employee_id text)
 -- returns jsonb
@@ -69,15 +80,47 @@ create policy "authenticated_full_access_attendees"
 -- security definer
 -- set search_path = public
 -- as $$ ... $$;
---
--- create or replace function public.register_participant(
---   p_employee_id text, p_fullname text, p_gender text, p_position text,
---   p_department text, p_bu text, p_is_invited boolean
--- ) returns jsonb
--- language plpgsql
--- security definer
--- set search_path = public
--- as $$ ... $$;
+
+create or replace function public.register_participant(
+  p_employee_id text,
+  p_fullname text,
+  p_gender text,
+  p_position text,
+  p_department text,
+  p_bu text,
+  p_is_invited boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- >>> THE REGISTRATION-SWITCH GUARD <<<
+  -- Blocks the write itself, not just the register.html UI, so a
+  -- closed event can't be bypassed by calling this RPC directly.
+  if not (select registration_open from public.app_settings where id = 1) then
+    return jsonb_build_object(
+      'success', false,
+      'message', 'Registration is currently closed.'
+    );
+  end if;
+
+  insert into attendees (employee_id, fullname, gender, position, department, bu, is_invited)
+  values (p_employee_id, p_fullname, p_gender, p_position, p_department, p_bu, p_is_invited);
+
+  return jsonb_build_object(
+    'success', true,
+    'message', 'Your registration has been successfully recorded.'
+  );
+exception
+  when unique_violation then
+    return jsonb_build_object(
+      'success', false,
+      'message', 'This Employee ID has already been registered.'
+    );
+end;
+$$;
 
 revoke execute on function public.check_employee(text) from public;
 revoke execute on function public.register_participant(text, text, text, text, text, text, boolean) from public;
@@ -355,7 +398,78 @@ for each row
 execute function public.set_invitees_audit_fields();
 
 -- ------------------------------------------------------------
--- 6. Live dashboard updates (Realtime).
+-- 6. Registration open/closed switch.
+--
+--    A single-row settings table controlling whether register.html
+--    accepts new registrations. Read is exposed to anon (register.html
+--    has no login and must be able to check this before showing the
+--    form); write is authenticated-only (the toggle on index.html).
+--
+--    The `id = 1` check constraint enforces there's ever only one row
+--    — this is a global on/off switch, not a per-event setting.
+-- ------------------------------------------------------------
+create table if not exists public.app_settings (
+  id smallint primary key default 1 check (id = 1),
+  registration_open boolean not null default true,
+  updated_at timestamp without time zone,
+  updated_by text
+);
+
+insert into public.app_settings (id, registration_open)
+values (1, true)
+on conflict (id) do nothing;
+
+alter table public.app_settings enable row level security;
+revoke all on public.app_settings from anon, authenticated, public;
+
+drop policy if exists "authenticated_full_access_app_settings" on public.app_settings;
+create policy "authenticated_full_access_app_settings"
+  on public.app_settings for all
+  to authenticated
+  using (true)
+  with check (true);
+
+-- Read-only status check — safe to expose to anon since it reveals
+-- nothing beyond a single true/false.
+create or replace function public.get_registration_status()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select registration_open from public.app_settings where id = 1;
+$$;
+
+-- Flips the switch. Stamps who changed it and when (Phnom Penh time,
+-- same convention as the invitees audit fields in section 5).
+create or replace function public.set_registration_status(p_open boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.app_settings
+  set registration_open = p_open,
+      updated_at = (now() AT TIME ZONE 'Asia/Phnom_Penh'),
+      updated_by = coalesce(auth.jwt() ->> 'email', auth.uid()::text, 'unknown')
+  where id = 1;
+  return p_open;
+end;
+$$;
+
+revoke execute on function public.get_registration_status()      from public;
+revoke execute on function public.set_registration_status(boolean) from public, anon;
+
+grant execute on function public.get_registration_status()      to anon, authenticated;
+grant execute on function public.set_registration_status(boolean) to authenticated;
+
+-- The registration_open guard is now built directly into
+-- register_participant(...) in section 2 above (search for
+-- "THE REGISTRATION-SWITCH GUARD") — nothing further to add here.
+
+-- ------------------------------------------------------------
+-- 7. Live dashboard updates (Realtime).
 --    This lets index.html subscribe to new rows and refresh
 --    automatically instead of requiring a manual "Refresh" click.
 --    Realtime enforces the SAME RLS policies as normal queries, so
@@ -379,7 +493,7 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
--- 7. Auth hardening (do this in the Dashboard, not SQL):
+-- 8. Auth hardening (do this in the Dashboard, not SQL):
 --    Authentication → Providers → Email:
 --      - Turn OFF "Allow new users to sign up" — accounts for
 --        index.html/invitees.html should only be created by an
