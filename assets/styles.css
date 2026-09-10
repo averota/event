@@ -44,16 +44,28 @@
 
 * { box-sizing: border-box; }
 
+html, body {
+  height: 100%;
+}
+
 html {
   background: var(--bg);
 }
 
+/* body is a 100vh flex column so that any .app-navbar sitting above
+   .center-shell keeps its own natural height, and .center-shell (flex: 1
+   below) fills exactly the space left over — instead of .center-shell's
+   own 100vh being added on top of the navbar's height, which is what
+   pushed everything down / caused the page to scroll past one viewport. */
 body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   transition: opacity .15s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 a { color: var(--accent); }
@@ -68,6 +80,10 @@ a { color: var(--accent); }
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 .app-navbar .brand {
   font-weight: 700;
@@ -112,7 +128,9 @@ a { color: var(--accent); }
 }
 
 .center-shell {
-  min-height: 100vh;
+  flex: 1 1 auto;
+  min-height: 0; /* let flexbox shrink it below content size instead of it forcing extra page height */
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
