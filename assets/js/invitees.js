@@ -13,8 +13,8 @@
 // from `anon` (see supabase-security.sql). Direct table grants for
 // anon/authenticated are revoked entirely, so this page's behaviour
 // is enforced by the database, not just by authGuard.js hiding the page.
-import { supabase as db } from './supabase/supabaseClient.js';
-import { confirmDialog } from './assets/js/confirmDialog.js';
+import { supabase as db } from '../../supabase/supabaseClient.js';
+import { confirmDialog } from './confirmDialog.js';
 
 const TABLE_NAME = 'invitees';
 
@@ -173,7 +173,7 @@ let currentDataset = null;
 
 logoutBtn.addEventListener('click', async () => {
     await db.auth.signOut();
-    window.location.replace('./login.html');
+    window.location.replace(new URL('../login.html', window.location.href).toString());
 });
 
 // ---------------------------------------------------------------

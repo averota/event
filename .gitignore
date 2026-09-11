@@ -1,7 +1,7 @@
-# Real Supabase config — never commit this. Copy assets/config.example.js
-# to assets/config.js locally, or generate it in CI (see
+# Real Supabase config — never commit this. Copy assets/js/config.example.js
+# to assets/js/config.js locally, or generate it in CI (see
 # .github/workflows/deploy.yml).
-assets/config.js
+assets/js/config.js
 
 # OS / editor noise
 .DS_Store

@@ -1,5 +1,5 @@
 // login.js
-import { supabase } from './supabase/supabaseClient.js';
+import { supabase } from '../../supabase/supabaseClient.js';
 
 const form = document.getElementById('loginForm');
 const errorBanner = document.getElementById('errorBanner');
@@ -43,7 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // If already signed in (verified server-side), skip straight to the homepage.
 (async function redirectIfLoggedIn() {
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) window.location.replace('./index.html');
+  if (user) window.location.replace('../../index.html');
 })();
 
 form.addEventListener('submit', async (e) => {
@@ -65,7 +65,7 @@ form.addEventListener('submit', async (e) => {
   try {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    window.location.replace('./index.html');
+    window.location.replace(new URL('index.html', window.location.href).toString());
   } catch (err) {
     // Deliberately generic — never reveal whether the email exists.
     errorBanner.textContent = 'Invalid email or password.';

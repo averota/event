@@ -29,7 +29,8 @@ function goToLogin() {
   // Relative path (not '/login.html') so this works whether the site
   // is served at a domain root or under a GitHub Pages subpath like
   // https://yourname.github.io/event/.
-  window.location.replace('./login.html');
+  const depth = window.location.pathname.includes('/pages/') ? '../' : './';
+  window.location.replace(new URL(depth + 'login.html', window.location.href).toString());
 }
 
 async function checkAuth() {

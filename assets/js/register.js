@@ -6,7 +6,7 @@
 // functions; it has no direct table access (see supabase-security.sql).
 // This is why register.html is safe to leave open to walk-in users
 // while index.html/invitees.html require a logged-in session.
-import { supabase } from './supabase/supabaseClient.js';
+import { supabase } from '../../supabase/supabaseClient.js';
 
 // ------------------------------------------------------------
 // Registration open/closed check. Runs before anything else on the

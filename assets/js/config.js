@@ -1,5 +1,5 @@
 // ============================================================
-// Copy this file to `assets/config.js` (which is gitignored —
+// Copy this file to `assets/js/config.js` (which is gitignored —
 // see .gitignore) and fill in your project's own values.
 //
 // assets/config.js must NEVER be committed to git. In CI/CD
