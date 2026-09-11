@@ -8,6 +8,10 @@ h1, h2, h3, h4, h5, h6, p, dl, dt, dd {
   font-family: 'Kantumruy Pro', sans-serif !important;
 }
 
+body {
+  height: 100vh;
+}
+
 /* Base html/body reset and the flex/centering behavior of
    .center-shell now live in assets/css/styles.css and apply here
    too — this file only overrides the one thing this page needs
