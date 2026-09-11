@@ -8,31 +8,12 @@ h1, h2, h3, h4, h5, h6, p, dl, dt, dd {
   font-family: 'Kantumruy Pro', sans-serif !important;
 }
 
-html, body {
-  min-height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Fills the space below the nav bar and centers the registration
-   card within it — the nav itself stays at its natural height at
-   the top instead of being centered along with the card. */
+/* Base html/body reset and the flex/centering behavior of
+   .center-shell now live in assets/css/styles.css and apply here
+   too — this file only overrides the one thing this page needs
+   different: tighter padding around the kiosk card. */
 .center-shell {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 1rem;
-  width: 100%;
 }
 
 /* Only the Verify/Walk-in step can grow tall enough to need this —

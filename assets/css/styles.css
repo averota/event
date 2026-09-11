@@ -44,8 +44,19 @@
 
 * { box-sizing: border-box; }
 
+/* Base reset — applies on every page (login, register, dashboard,
+   invitees). Previously only register.css set width/margin/overflow,
+   so every other page was relying on browser defaults and could
+   scroll horizontally or show a background "seam" past 100% width.
+   This is the single source of truth; page-specific stylesheets
+   should only override what genuinely differs for that page. */
 html, body {
   height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 html {
@@ -121,9 +132,17 @@ a { color: var(--accent); }
 .app-navbar .navbar-actions { display: flex; align-items: center; gap: 8px; }
 
 /* ---------- Layout shells ---------- */
+/* Shared content shell for the two data-heavy admin pages
+   (dashboard.html, invitees.html) — both should reference this
+   exact class rather than each defining their own container, or
+   they end up with different widths/padding and visibly different
+   margins. 1180px previously left a lot of empty gutter on wide
+   monitors for pages that are mostly stat cards and data tables;
+   1440px keeps text content readable while giving tables more
+   breathing room. */
 .app-shell {
-  max-width: 1180px;
-  margin: 0 auto;
+  width: 100vw;
+  margin: 10px auto;
   padding: 32px 24px 64px;
 }
 
@@ -214,6 +233,14 @@ a { color: var(--accent); }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+/* Narrow, centered card used for login / reset-password panels —
+   replaces the inline max-width/width styles that were previously
+   repeated on each card in index.html. */
+.auth-card {
+  max-width: 420px;
+  width: 100%;
 }
 
 .stat-card {
