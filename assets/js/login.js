@@ -1,5 +1,5 @@
 // login.js
-import { supabase } from './assets/supabaseClient.js';
+import { supabase } from './supabase/supabaseClient.js';
 
 const form = document.getElementById('loginForm');
 const errorBanner = document.getElementById('errorBanner');

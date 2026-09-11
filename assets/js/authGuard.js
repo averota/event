@@ -21,7 +21,7 @@
 //    database's Row Level Security policies (this guard only decides
 //    whether to *show the page* — it is a UX convenience, not the
 //    security boundary).
-import { supabase } from './supabaseClient.js';
+import { supabase } from '../../supabase/supabaseClient.js';
 
 document.body.style.opacity = '0';
 

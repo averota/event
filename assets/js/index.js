@@ -1,6 +1,6 @@
 // index.js — logic for the homepage (index.html)
-import { supabase } from './assets/supabaseClient.js';
-import { confirmDialog } from './assets/confirmDialog.js';
+import { supabase } from './supabase/supabaseClient.js';
+import { confirmDialog } from './assets/js/confirmDialog.js';
 
 const logBox = document.getElementById('logTerminal');
 const tableBody = document.getElementById('tableBody');
