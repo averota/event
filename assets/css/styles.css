@@ -29,7 +29,7 @@
   --ghost-bg: #EEF0F3;
   --ghost-bg-hover: #E3E6EB;
 
-  --term-bg: #12151C;
+  --term-bg: #1a1a1c;
   --term-text: #C9D1D9;
   --term-accent: #4ADE80;
   --term-error: #F87171;
@@ -143,7 +143,7 @@ a { color: var(--accent); }
 .app-shell {
   width: 100vw;
   margin: 10px auto;
-  padding: 32px 24px 64px;
+  padding: 10px 20px 60px;
 }
 
 .center-shell {
@@ -247,7 +247,7 @@ a { color: var(--accent); }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 18px;
+  padding: 0.5rem 0.75rem;
   position: relative;
   overflow: hidden;
 }
@@ -262,7 +262,7 @@ a { color: var(--accent); }
 
 .stat-invited::before    { background: var(--accent); }
 .stat-registered::before { background: var(--success); }
-.stat-female::before     { background: #DB2777; }
+.stat-female::before     { background: #ff2f8d; }
 .stat-pending::before    { background: var(--danger); }
 .stat-walkin::before     { background: var(--warning); }
 
@@ -277,7 +277,7 @@ a { color: var(--accent); }
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.5;
-  padding: 12px 14px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
