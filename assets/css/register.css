@@ -13,14 +13,16 @@ h1, h2, h3, h4, h5, h6, p, dl, dt, dd {
    too — this file only overrides the one thing this page needs
    different: tighter padding around the kiosk card. */
 .center-shell {
-  padding: 1rem;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
 }
 
 /* Only the Verify/Walk-in step can grow tall enough to need this —
    everything else stays vertically centered. */
 body.align-top .center-shell {
   align-items: flex-start;
-  padding: 2rem 1rem;
+  padding: 1rem;
 }
 
 .registration-container {
