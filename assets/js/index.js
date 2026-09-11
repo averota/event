@@ -220,7 +220,9 @@ document.getElementById('dlBtn').addEventListener('click', () => {
 document.getElementById('rfBtn').addEventListener('click', getData);
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await supabase.auth.signOut();
-  window.location.replace(new URL('login.html', window.location.href).toString());
+  // Login page is now index.html at the site root; this page
+  // (dashboard.html) lives one level down in /pages/.
+  window.location.replace(new URL('../index.html', window.location.href).toString());
 });
 
 // ------------------------------------------------------------

@@ -173,7 +173,8 @@ let currentDataset = null;
 
 logoutBtn.addEventListener('click', async () => {
     await db.auth.signOut();
-    window.location.replace(new URL('../login.html', window.location.href).toString());
+    // Login page is now index.html at the site root.
+    window.location.replace(new URL('../index.html', window.location.href).toString());
 });
 
 // ---------------------------------------------------------------

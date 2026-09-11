@@ -26,11 +26,14 @@ import { supabase } from '../../supabase/supabaseClient.js';
 document.body.style.opacity = '0';
 
 function goToLogin() {
-  // Relative path (not '/login.html') so this works whether the site
-  // is served at a domain root or under a GitHub Pages subpath like
-  // https://yourname.github.io/event/.
-  const depth = window.location.pathname.includes('/pages/') ? '../' : './';
-  window.location.replace(new URL(depth + 'login.html', window.location.href).toString());
+  // The login page is now index.html at the site root (was
+  // login.html before the rename). Both pages that load this guard
+  // (dashboard.html and invitees.html) live one level down in
+  // /pages/, so '../' always reaches the root. Resolved against the
+  // current page URL (not a hardcoded absolute path) so this still
+  // works whether the site is served at a domain root or under a
+  // GitHub Pages subpath like https://yourname.github.io/event/.
+  window.location.replace(new URL('../index.html', window.location.href).toString());
 }
 
 async function checkAuth() {
