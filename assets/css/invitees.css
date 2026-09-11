@@ -1,5 +1,5 @@
 /* invitees.html-only rules. Shared tokens/components (dropzone,
-   modal-overlay, data-table, hidden) live in assets/styles.css. */
+   modal-overlay, data-table, hidden) live in assets/css/styles.css. */
 
 .wrap { max-width: 78rem; margin: 0 auto; }
 .stack { display: flex; flex-direction: column; }

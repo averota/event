@@ -9,7 +9,7 @@
 //    unauthenticated visitor never sees a flash of real data before
 //    the redirect fires.
 //  - We hide document.body (not document.documentElement) and set
-//    the html background via CSS (assets/styles.css) so the brief
+//    the html background via CSS (assets/css/styles.css) so the brief
 //    hidden window shows the app's own background color instead of
 //    a jarring blank-white flash — html itself stays visible and
 //    keeps painting its background even while body is hidden.

@@ -1,7 +1,7 @@
 # What changed, and why
 
 ## 1. Design / consistency
-- All four pages now share one design system: `assets/styles.css`, built
+- All four pages now share one design system: `assets/css/styles.css`, built
   on top of Bootstrap 5 (CDN) instead of four separate, drifting sets of
   hand-rolled CSS variables and component styles.
 - Page-specific rules that genuinely don't belong on every page

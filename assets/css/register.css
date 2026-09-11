@@ -1,5 +1,5 @@
 /* register.html-only rules. Shared design tokens/components live in
-   assets/styles.css — this file only has the kiosk-specific layout
+   assets/css/styles.css — this file only has the kiosk-specific layout
    and the Khmer/English font override. */
 
 body,

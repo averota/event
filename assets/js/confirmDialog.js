@@ -1,7 +1,7 @@
 // assets/confirmDialog.js
 //
 // One shared confirmation modal, built on the .modal-overlay/.modal-box
-// styles already in assets/styles.css, instead of every page carrying
+// styles already in assets/css/styles.css, instead of every page carrying
 // its own copy of the modal markup + open/close wiring.
 //
 // Usage:
